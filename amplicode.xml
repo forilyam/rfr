@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AmplicodePersistenceUnitSettings">
+    <persistence-units>
+      <persistence-unit moduleName="rfr.rfr-api.main" name="Default">
+        <packages>
+          <package value="io.student.rangiffler" />
+        </packages>
+      </persistence-unit>
+      <persistence-unit moduleName="rfr.rfr-auth.main" name="Default">
+        <packages>
+          <package value="io.student.rangiffler" />
+        </packages>
+      </persistence-unit>
+    </persistence-units>
+  </component>
+</project>

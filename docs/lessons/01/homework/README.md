@@ -41,12 +41,12 @@
 
 Настройте **один** агент на выбор — Claude Code, Cursor, Codex или GigaCode — так, чтобы он видел skill `rfr-page-objects` и Playwright MCP.
 
-Skill — это папка с файлом `SKILL.md`: YAML-заголовок с полями `name` и `description` и инструкции в Markdown. Агент читает `description` и сам решает, когда применить skill, или вы вызываете его явно. Поле `name` должно совпадать с именем папки. Исходник skill в проекте один — `.claude/skills/rfr-page-objects/SKILL.md`; если агент ищет skills в другой папке, сделайте символическую ссылку, а не копию, чтобы правила не разъехались.
+Skill — это папка с файлом `SKILL.md`: YAML-заголовок с полями `name` и `description` и инструкции в Markdown. Агент читает `description` и сам решает, когда применить skill, или вы вызываете его явно. Поле `name` должно совпадать с именем папки. Исходник skill в проекте один — `../../../../.agents`; если агент ищет skills в другой папке, сделайте символическую ссылку, а не копию, чтобы правила не разъехались.
 
 ### Claude Code
 
 - Установка: `curl -fsSL https://claude.ai/install.sh | bash` (или `npm install -g @anthropic-ai/claude-code`), затем `claude` в корне проекта и вход в аккаунт.
-- Skills: проектные — `.claude/skills/<name>/SKILL.md`, личные — `~/.claude/skills/<name>/SKILL.md`. Наш skill уже на месте.
+- Skills: проектные — `../../../../.agents`, личные — `~/.claude/skills/<name>/SKILL.md`. Наш skill уже на месте.
 - Вызов: автоматически по `description` или явно — `/rfr-page-objects`.
 - MCP: `.mcp.json` в корне проекта подхватывается сам, при первом запуске подтвердите сервер `playwright`.
 - Документация: <https://code.claude.com/docs/en/skills>.
@@ -54,7 +54,7 @@ Skill — это папка с файлом `SKILL.md`: YAML-заголовок 
 ### Cursor
 
 - Установка: скачайте Cursor с <https://cursor.com/download> и откройте папку проекта.
-- Skills: `.cursor/skills/`, `.agents/skills/` в проекте и `~/.cursor/skills/`, `~/.agents/skills/` у пользователя. Для совместимости Cursor читает и `.claude/skills/`, так что наш skill подхватится без изменений.
+- Skills: `.cursor/skills/`, `.agents/skills/` в проекте и `~/.cursor/skills/`, `~/.agents/skills/` у пользователя. Для совместимости Cursor читает и `../../../../.agents`, так что наш skill подхватится без изменений.
 - Вызов: автоматически по `description` или в чате агента — `/` и имя skill.
 - MCP: `.cursor/mcp.json` в том же формате, что `.mcp.json`.
 - Документация: <https://cursor.com/docs/skills>.
