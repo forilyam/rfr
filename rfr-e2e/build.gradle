@@ -58,3 +58,9 @@ tasks.register('installPlaywright', JavaExec) {
     mainClass = 'com.microsoft.playwright.CLI'
     args 'install', 'chromium'
 }
+
+tasks.register('installPlaywrightWithDeps', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.microsoft.playwright.CLI'
+    args 'install', '--with-deps', 'chromium'
+}

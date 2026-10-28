@@ -94,3 +94,80 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+
+  e2e:
+    name: E2E tests
+    needs: changes
+    if: >-
+      ${{ github.event_name == 'pull_request' &&
+          (needs.changes.outputs.ci == 'true' ||
+           needs.changes.outputs.java == 'true' ||
+           needs.changes.outputs.auth == 'true' ||
+           needs.changes.outputs.api == 'true' ||
+           needs.changes.outputs.e2e == 'true' ||
+           needs.changes.outputs.frontend == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.4.7
+        env:
+          MYSQL_ROOT_PASSWORD: secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -psecret"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+          --health-start-period=30s
+    env:
+      VITE_AUTH_URL: http://localhost:9001
+      VITE_API_URL: http://localhost:8081
+      VITE_FRONT_HOST: localhost
+      VITE_FRONT_URL: http://localhost:3001
+      VITE_CLIENT_ID: client
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: rfr-gql-client/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: rfr-gql-client
+        run: npm ci
+      - name: Install Chromium and system dependencies
+        run: ./gradlew :rfr-e2e:installPlaywrightWithDeps --console=plain
+      - name: Start backends
+        run: ./gradlew runAll --console=plain > "$RUNNER_TEMP/rfr-backends.log" 2>&1 &
+      - name: Start frontend
+        working-directory: rfr-gql-client
+        run: npm run dev > "$RUNNER_TEMP/rfr-frontend.log" 2>&1 &
+      - name: Wait for application ports
+        run: >-
+          npx --yes wait-on@8.0.3 --timeout 180000
+          tcp:localhost:9001 tcp:localhost:8081 tcp:localhost:3001
+      - name: Run e2e tests
+        run: ./gradlew e2e --console=plain
+      - name: Show application logs
+        if: failure()
+        run: |
+          for file in "$RUNNER_TEMP/rfr-backends.log" "$RUNNER_TEMP/rfr-frontend.log"; do
+            if [[ -f "$file" ]]; then
+              tail -n 200 "$file"
+            fi
+          done
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: allure-results
+          path: rfr-e2e/build/allure-results
