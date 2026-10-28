@@ -64,6 +64,24 @@ execute() {
     printf '\n'
 }
 
+lint() {
+    local root=$1 directory=$2 path project=false
+    local files=()
+    while IFS= read -r -d '' path; do
+        case "$path" in
+            rfr-gql-client/eslint.config.*|rfr-gql-client/package.json|rfr-gql-client/package-lock.json) project=true ;;
+            rfr-gql-client/*.ts|rfr-gql-client/*.tsx|rfr-gql-client/*.js|rfr-gql-client/*.mjs|rfr-gql-client/*.cjs)
+                if [[ -f "$root/$path" && ! -L "$root/$path" ]]; then files+=("${path#rfr-gql-client/}"); fi
+                ;;
+        esac
+    done < "$directory/dirty"
+    if [[ "$project" == true ]]; then
+        execute "$root/rfr-gql-client" "$directory/lint" npm run lint
+    elif [[ ${#files[@]} -gt 0 ]]; then
+        execute "$root/rfr-gql-client" "$directory/lint" ./node_modules/.bin/eslint --report-unused-disable-directives --max-warnings 0 -- "${files[@]}"
+    fi
+}
+
 review() {
     local root=$1 cache=$2 directory=$3 path group frontend=false
     local groups=(rfr-auth-main rfr-auth-test rfr-api-main rfr-api-test rfr-e2e-main rfr-e2e-test frontend)
@@ -86,9 +104,9 @@ review() {
             printf '%s\0' "$path" >> "$directory/$group.paths"
         fi
     done < "$directory/paths"
+    git -C "$root" diff --name-only --no-renames -z HEAD -- > "$directory/dirty"
+    git -C "$root" ls-files --others --exclude-standard -z >> "$directory/dirty"
     if [[ ! -f "$cache/initialized" ]]; then
-        git -C "$root" diff --name-only --no-renames -z HEAD -- > "$directory/dirty"
-        git -C "$root" ls-files --others --exclude-standard -z >> "$directory/dirty"
         while IFS= read -r -d '' path; do
             group=$(category "$path")
             if [[ -n "$group" ]]; then : > "$directory/$group.dirty"; fi
@@ -114,7 +132,7 @@ review() {
     fi
     if [[ "$frontend" == true ]]; then
         execute "$root/rfr-gql-client" "$directory/build" npm run build
-        execute "$root/rfr-gql-client" "$directory/lint" npm run lint
+        lint "$root" "$directory"
     fi
 }
 

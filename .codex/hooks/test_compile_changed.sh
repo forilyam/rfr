@@ -4,6 +4,7 @@ set -euo pipefail
 checkout() {
     local directory tree commit
     directory=$(mktemp -d "${TMPDIR:-/tmp}/rfr-bash-hook-test.XXXXXX")
+    directory=$(cd "$directory" && pwd -P)
     git init --bare "$directory/repository.git" > "$directory/git.log" 2>&1
     tree=$(git --git-dir="$directory/repository.git" mktree < /dev/null)
     commit=$(printf 'Hook fixture\n' | git -c user.name='Hook test' -c user.email=hook@example.invalid --git-dir="$directory/repository.git" commit-tree "$tree")
@@ -23,7 +24,15 @@ printf 'npm %s\n' "$*" >> "$RFR_HOOK_CALLS"
 printf 'irregular %s diagnostic\n' "$2" >&2
 exit "$RFR_FAKE_STATUS"
 COMPILER
-    chmod +x "$directory/checkout/gradlew" "$directory/bin/npm"
+    mkdir -p "$directory/checkout/rfr-gql-client/node_modules/.bin"
+    cat > "$directory/checkout/rfr-gql-client/node_modules/.bin/eslint" <<'LINTER'
+#!/usr/bin/env bash
+printf 'eslint %s\n' "$*" >> "$RFR_HOOK_CALLS"
+printf '%s\0' "$PWD" "$@" > "$RFR_HOOK_CALLS.eslint"
+printf 'irregular lint diagnostic\n' >&2
+exit "$RFR_FAKE_STATUS"
+LINTER
+    chmod +x "$directory/checkout/gradlew" "$directory/bin/npm" "$directory/checkout/rfr-gql-client/node_modules/.bin/eslint"
     printf '%s\n' "$directory"
 }
 
@@ -166,12 +175,65 @@ test_missing_compilers_cannot_hide_their_errors() {
     match "$(context "$directory/response.json")" '(?s)Exit code: [1-9][0-9]*.*gradlew' 'An unavailable compiler did not return actionable feedback'
 }
 
+arguments() {
+    node -e 'const fs = require("node:fs"); const path = process.argv[1]; console.log(fs.existsSync(path) ? JSON.stringify(fs.readFileSync(path, "utf8").split("\0").slice(0, -1)) : "missing ESLint invocation");' "$1"
+}
+
+test_frontend_lint_cannot_split_relative_paths_with_spaces() {
+    local directory
+    directory=$(checkout "$1")
+    mkdir -p "$directory/checkout/rfr-gql-client/src/nested folder"
+    printf 'export const value = 47;\n' > "$directory/checkout/rfr-gql-client/src/nested folder/profile card.tsx"
+    invoke "$directory" "$directory/response.json" 0 0 7
+    equal "$(arguments "$directory/calls.eslint")" "[\"$directory/checkout/rfr-gql-client\",\"--report-unused-disable-directives\",\"--max-warnings\",\"0\",\"--\",\"src/nested folder/profile card.tsx\"]" 'ESLint did not receive the frontend directory and one relative file argument'
+}
+
+test_unchanged_frontend_files_cannot_enter_lint_arguments() {
+    local directory
+    directory=$(checkout "$1")
+    mkdir -p "$directory/checkout/rfr-gql-client/src"
+    printf 'export const value = 83;\n' > "$directory/checkout/rfr-gql-client/src/untouched.ts"
+    git -C "$directory/checkout" add -- rfr-gql-client/src/untouched.ts
+    git -C "$directory/checkout" -c user.name='Hook test' -c user.email=hook@example.invalid commit -m 'Tracked frontend fixture' > "$directory/commit.log" 2>&1
+    printf 'export const value = 29;\n' > "$directory/checkout/rfr-gql-client/src/changed.ts"
+    invoke "$directory" "$directory/response.json" 0 0 7
+    equal "$(arguments "$directory/calls.eslint")" "[\"$directory/checkout/rfr-gql-client\",\"--report-unused-disable-directives\",\"--max-warnings\",\"0\",\"--\",\"src/changed.ts\"]" 'ESLint selected an unchanged file or missed the changed file'
+}
+
+test_frontend_configuration_changes_cannot_skip_project_lint() {
+    local directory
+    directory=$(checkout "$1")
+    printf 'export default [];\n' > "$directory/checkout/rfr-gql-client/eslint.config.js"
+    invoke "$directory" "$directory/response.json" 0 0 7
+    equal "$(cat "$directory/calls")" $'npm run build\nnpm run lint' 'ESLint configuration changes did not check the whole frontend'
+}
+
+test_unchanged_frontend_failures_dont_repeat_lint() {
+    local directory count
+    directory=$(checkout "$1")
+    mkdir -p "$directory/checkout/rfr-gql-client/src"
+    printf 'export const value = 61;\n' > "$directory/checkout/rfr-gql-client/src/example.tsx"
+    invoke "$directory" "$directory/first.json" 37 0 7
+    invoke "$directory" "$directory/second.json" 37 0 7
+    count=$(wc -l < "$directory/calls")
+    equal "$((count))" 2 'Unchanged frontend sources repeated their failed checks'
+}
+
+test_frontend_assets_cannot_enter_eslint_arguments() {
+    local directory
+    directory=$(checkout "$1")
+    mkdir -p "$directory/checkout/rfr-gql-client/src"
+    printf 'body { color: navy; }\n' > "$directory/checkout/rfr-gql-client/src/example.css"
+    invoke "$directory" "$directory/response.json" 0 0 7
+    equal "$(cat "$directory/calls")" 'npm run build' 'A frontend asset invoked ESLint without a matching configuration'
+}
+
 hook=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/compile_changed.sh
 if [[ ! -f "$hook" ]]; then
     printf 'FAIL: Bash compilation hook is missing\n' >&2
     exit 1
 fi
-for test in test_java_errors_cannot_disappear_from_context test_test_sources_cannot_execute_tests test_frontend_failure_cannot_skip_lint test_unchanged_failures_dont_repeat_compilation test_new_edits_cannot_reuse_stale_compilation test_backup_moves_cannot_skip_compilation test_documentation_changes_dont_start_compilation test_concurrent_calls_cannot_compile_the_same_snapshot_twice test_staging_files_dont_start_another_compilation test_timeouts_cannot_lose_partial_output test_missing_compilers_cannot_hide_their_errors; do
+for test in test_frontend_lint_cannot_split_relative_paths_with_spaces test_unchanged_frontend_files_cannot_enter_lint_arguments test_frontend_configuration_changes_cannot_skip_project_lint test_unchanged_frontend_failures_dont_repeat_lint test_frontend_assets_cannot_enter_eslint_arguments test_java_errors_cannot_disappear_from_context test_test_sources_cannot_execute_tests test_frontend_failure_cannot_skip_lint test_unchanged_failures_dont_repeat_compilation test_new_edits_cannot_reuse_stale_compilation test_backup_moves_cannot_skip_compilation test_documentation_changes_dont_start_compilation test_concurrent_calls_cannot_compile_the_same_snapshot_twice test_staging_files_dont_start_another_compilation test_timeouts_cannot_lose_partial_output test_missing_compilers_cannot_hide_their_errors; do
     "$test" "$hook"
     printf 'PASS: %s\n' "$test"
 done
