@@ -53,7 +53,7 @@ rfr-api/
             └── query_feed_with_friends.json       # Лента "With friends": те же 4 + 3 фото друзей
 ```
 
-Сгенерированные классы (`io.student.rangiffler.model.*`, например `User`, `Photo`, `UserInput`) появляются в
+Сгенерированные классы (`io.student.rangiffler.model.types.*`, например `User`, `Photo`, `UserInput`) появляются в
 `build/generated/sources/dgs-codegen` после `./gradlew :rfr-api:generateJava` (выполняется автоматически при сборке).
 `UserConnection` и `PhotoConnection` маппятся на `org.springframework.data.domain.Page<...>`, скаляр `Date` - на `LocalDate`.
 
@@ -182,7 +182,9 @@ mutation CreatePhoto($input: PhotoInput!) {
 
 ## Ошибки
 
-HTTP-статус GraphQL-ответа - 200 и при ошибке; проверяйте `errors`. `GraphQlExceptionResolver` переводит исключения:
+Ошибки выполнения GraphQL-запроса могут прийти с HTTP 200; проверяйте `errors`.
+Невалидный или просроченный Bearer-токен отклоняется фильтрами с HTTP 401 до GraphQL.
+`GraphQlExceptionResolver` переводит исключения:
 
 | Исключение | `extensions.classification` | Пример `message` |
 |---|---|---|
@@ -223,12 +225,9 @@ UUID пользователя в `rangiffler-api` и `rangiffler-auth` неза�
 Требования: JDK 25 (Gradle toolchain), Docker для MySQL, запущенный `rfr-auth` (нужен для JWKS).
 
 ```bash
-# из корня проекта: MySQL в Docker
-# внимание: localenv.sh останавливает и удаляет ВСЕ docker-контейнеры на машине
-bash localenv.sh
-
-cd rfr-api
-../gradlew bootRun
+# из корня проекта, при запущенном rfr-auth
+docker compose up -d mysql
+./gradlew :rfr-api:bootRun
 # или main class io.student.rangiffler.RangifflerApiApplication из IDE
 ```
 

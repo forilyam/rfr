@@ -71,7 +71,7 @@ Refresh token публичному клиенту не выдается. Пос�
 
 | Токен | Кому предназначен | Содержимое | Время жизни |
 |---|---|---|---|
-| **access token** (JWT) | `rfr-api` | `sub` = username, `aud: ["rangiffler-api"]`, `authorities: ["read","write"]`, `scope` | 10 минут |
+| **access token** (JWT) | `rfr-api` | `sub` = username, `aud: ["rangiffler-api"]`, `authorities: ["read","write"]`, `scope` | 30 минут (`access-token-time-to-live: 30m`) |
 | **id_token** (JWT) | Фронтенд (`aud` = `client`) | `sub`, `sid` и др. OIDC-claims | 30 минут (фиксировано в Spring Authorization Server) |
 
 - `aud` и `authorities` добавляет `AccessTokenCustomizer` только в access token. Authorities берутся из таблицы `authority`
@@ -155,7 +155,7 @@ Whitespace проверяется через `Character.isWhitespace` (проб�
 4. rfr-auth -> 302 http://localhost:3001/authorized?code=...   (экран согласия появится, только если запросить scope кроме openid)
 5. Frontend -> POST /oauth2/token
                grant_type=authorization_code&code=...&redirect_uri=...&client_id=client&code_verifier=...
-6. rfr-auth -> { "access_token": "...", "id_token": "...", "token_type": "Bearer", "expires_in": 599, "scope": "openid" }
+6. rfr-auth -> { "access_token": "...", "id_token": "...", "token_type": "Bearer", "expires_in": 1799, "scope": "openid" }
 ```
 
 Фронтенд сохраняет `access_token` и `id_token` в localStorage и передает в `rfr-api` только access token.
@@ -165,7 +165,7 @@ Whitespace проверяется через `Character.isWhitespace` (проб�
 1. Фронтенд отзывает access token: `POST /oauth2/revoke` (ошибка не блокирует logout).
 2. Переход на `/connect/logout?id_token_hint=<id_token>&post_logout_redirect_uri={front url}/logout`.
 3. `OidcClearCookiesLogoutHandler` очищает `JSESSIONID` и `XSRF-TOKEN`, сессия `rfr-auth` завершается.
-4. Редирект на `/logout` фронтенда, который очищает localStorage.
+4. Редирект на `/logout` фронтенда, который удаляет токены и PKCE из localStorage.
 
 ### Тема оформления
 
@@ -188,12 +188,9 @@ OAuth-авторизации, consent и ключи в БД не хранятс�
 Требования: JDK 25 (Gradle toolchain), Docker для MySQL.
 
 ```bash
-# из корня проекта: MySQL в Docker
-# внимание: localenv.sh останавливает и удаляет ВСЕ docker-контейнеры на машине
-bash localenv.sh
-
-cd rfr-auth
-../gradlew bootRun
+# из корня проекта
+docker compose up -d mysql
+./gradlew :rfr-auth:bootRun
 # или main class io.student.rangiffler.RangifflerAuthApplication из IDE
 ```
 
@@ -207,6 +204,6 @@ curl http://localhost:9001/.well-known/openid-configuration
 
 - **Токены перестали проходить после перезапуска `rfr-auth`.** Ключ подписи генерируется при старте - войдите заново.
 - **`rfr-api` отвечает 401 на валидный на вид токен.** Проверьте, что в Bearer передается access token, а не id_token
-  (у id_token `aud` = `client`), и что токен не старше 10 минут.
+  (у id_token `aud` = `client`), и что у токена не истёк `exp` (TTL access token — 30 минут).
 - **CORS-ошибки.** Фронтенд должен работать на `rangiffler-front.base-uri` (`http://localhost:3001`); origins задает `CorsCustomizer`.
 - **`GET /login` сразу уводит на фронтенд.** Это ожидаемо без сохраненного OAuth-запроса - начинайте с `/oauth2/authorize`.

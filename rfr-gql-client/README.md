@@ -11,13 +11,16 @@
 ## Технологический стек
 
 - **React 19**, **TypeScript 6**
-- **Vite 8** - сборщик и dev-сервер (Node.js `^20.19.0` или `>=22.12.0`)
+- **Vite 8** - сборщик и dev-сервер
 - **Apollo Client 4** - GraphQL клиент (`@apollo/client/react` для хуков)
 - **MUI 9** - компоненты, светлая и темная тема (CSS variables)
 - **React Router 8** - маршрутизация
 - **crypto-js** - PKCE (`code_verifier`, `code_challenge`)
 - **react-svg-worldmap** - карта мира
 - **ESLint 10** (flat config, `eslint.config.js`), `typescript-eslint`
+
+Для установленных зависимостей нужен Node.js 22 (не ниже 22.22.0) либо 24+.
+Ограничение учитывает `engines` React Router и ESLint из `package-lock.json`, а не только Vite.
 
 ## Структура проекта
 
@@ -40,7 +43,7 @@ rfr-gql-client/src/
 │   ├── PhotoContainer/     # Сетка фото, скелетоны, бесконечная прокрутка, пустые состояния
 │   ├── PhotoCard/          # Карточка: фото 4:3, страна, лайк, меню владельца (Edit / Delete)
 │   ├── AddPhotoFab/        # Плавающая кнопка "Add photo"
-│   ├── PhotoModal/         # Только formValidate.ts - начальное состояние и валидация формы фото
+│   ├── PhotoModal/         # Компонент PhotoModal и formValidate.ts; активный диалог — в context/DialogContext.tsx
 │   ├── ImageUpload/, CountrySelect/
 │   ├── ProfileForm/        # Форма профиля
 │   ├── PeopleTable/        # All / Friends / Income / Outcome, карточки на узких экранах
@@ -63,7 +66,7 @@ rfr-gql-client/src/
 | `/` | Landing page: Login и Register; если пользователь уже вошел - переход в приложение |
 | `/redirect` | Генерирует PKCE и уводит на `rfr-auth` `/oauth2/authorize` |
 | `/authorized` | OAuth callback: обмен `code` на токены |
-| `/logout` | Post-logout redirect: очистка localStorage |
+| `/logout` | Post-logout redirect: удаление токенов и PKCE из localStorage |
 | `/my-travels` | Карта и лента (защищенный) |
 | `/people` | Люди и дружба (защищенный) |
 | `/profile` | Профиль (защищенный) |
@@ -81,9 +84,9 @@ rfr-gql-client/src/
 4. Apollo передает в `rfr-api` **только access token**: `Authorization: Bearer <access_token>`.
 5. HTTP 401 от `rfr-api` (истекший или невалидный токен) - `ErrorLink` очищает сессию и уводит на `/`.
 6. Logout (`MenuAppBar`): `POST /oauth2/revoke` для access token -> очистка Apollo store ->
-   `/connect/logout?id_token_hint=<id_token>&post_logout_redirect_uri=.../logout` -> `/logout` очищает localStorage.
+   `/connect/logout?id_token_hint=<id_token>&post_logout_redirect_uri=.../logout` -> `/logout` удаляет токены и PKCE из localStorage.
 
-Access token живет 10 минут, refresh token публичному клиенту не выдается: после истечения пользователь входит заново
+Access token живет 30 минут (настройка `rfr-auth`), refresh token публичному клиенту не выдается: после истечения пользователь входит заново
 (пока жива сессия `rfr-auth`, без ввода пароля).
 
 ### localStorage
