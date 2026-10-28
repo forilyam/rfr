@@ -7,6 +7,12 @@ wrapper {
     gradleVersion = '9.7.1'
 }
 
+tasks.register('runAll') {
+    group = 'application'
+    description = 'Runs both backend services in parallel'
+    dependsOn ':rfr-auth:bootRun', ':rfr-api:bootRun'
+}
+
 
 allprojects {
     apply plugin: 'java'
