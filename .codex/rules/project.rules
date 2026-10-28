@@ -1,0 +1,95 @@
+prefix_rule(
+    pattern = [["./gradlew", "../gradlew", "gradle"], ["runAll", "bootRun", ":rfr-auth:bootRun", ":rfr-api:bootRun", "e2e", "test", ":rfr-e2e:test", ":rfr-auth:test", ":rfr-api:test", ":rfr-e2e:installPlaywright", "--stop"]],
+    decision = "allow",
+    justification = "Запуск локальных бэкендов и тестов проекта разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["rtk", ["gradlew", "gradle"], ["runAll", "bootRun", ":rfr-auth:bootRun", ":rfr-api:bootRun", "e2e", "test", ":rfr-e2e:test", ":rfr-auth:test", ":rfr-api:test", ":rfr-e2e:installPlaywright", "--stop"]],
+    decision = "allow",
+    justification = "Запуск локальных бэкендов и тестов через RTK разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["npm", "run", ["dev", "preview", "test"]],
+    decision = "allow",
+    justification = "Запуск локального фронтенда и его тестов разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["rtk", "npm", "run", ["dev", "preview", "test"]],
+    decision = "allow",
+    justification = "Запуск локального фронтенда и его тестов через RTK разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["docker", "compose", "up", "-d", "mysql"],
+    decision = "allow",
+    justification = "Запуск MySQL проекта разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["rtk", "docker", "compose", "up", "-d", "mysql"],
+    decision = "allow",
+    justification = "Запуск MySQL проекта через RTK разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["docker", "compose", ["start", "stop", "restart"], "mysql"],
+    decision = "allow",
+    justification = "Управление MySQL проекта разрешено заранее",
+)
+
+prefix_rule(
+    pattern = ["rtk", "docker", "compose", ["start", "stop", "restart"], "mysql"],
+    decision = "allow",
+    justification = "Управление MySQL проекта через RTK разрешено заранее",
+)
+
+prefix_rule(
+    pattern = [["kill", "/bin/kill"], "-TERM"],
+    decision = "allow",
+    justification = "Разрешено останавливать только проверенные процессы локального стенда и тестов проекта",
+)
+
+prefix_rule(
+    pattern = ["rtk", ["proxy", "bypass"], ["kill", "/bin/kill"], "-TERM"],
+    decision = "allow",
+    justification = "Разрешено останавливать через RTK только проверенные процессы локального стенда и тестов проекта",
+)
+
+prefix_rule(
+    pattern = [["git", "/usr/bin/git", "/opt/homebrew/bin/git"], "push"],
+    decision = "forbidden",
+    justification = "git push запрещён; оставь коммиты локально",
+)
+
+prefix_rule(
+    pattern = ["rtk", "git", "push"],
+    decision = "forbidden",
+    justification = "git push через RTK запрещён; оставь коммиты локально",
+)
+
+prefix_rule(
+    pattern = ["rtk", ["proxy", "bypass"], ["git", "/usr/bin/git", "/opt/homebrew/bin/git"], "push"],
+    decision = "forbidden",
+    justification = "git push через обёртку RTK запрещён; оставь коммиты локально",
+)
+
+prefix_rule(
+    pattern = [["rm", "grm", "/bin/rm", "/usr/bin/rm", "/opt/homebrew/bin/grm"]],
+    decision = "forbidden",
+    justification = "Удаление запрещено; перемести файл или каталог в .<имя>.<время>.bak",
+)
+
+prefix_rule(
+    pattern = ["rtk", ["rm", "grm"]],
+    decision = "forbidden",
+    justification = "Удаление через RTK запрещено; перемести файл или каталог в .<имя>.<время>.bak",
+)
+
+prefix_rule(
+    pattern = ["rtk", ["proxy", "bypass"], ["rm", "grm", "/bin/rm", "/usr/bin/rm", "/opt/homebrew/bin/grm"]],
+    decision = "forbidden",
+    justification = "Удаление через обёртку RTK запрещено; перемести файл или каталог в .<имя>.<время>.bak",
+)
