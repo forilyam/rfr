@@ -23,16 +23,21 @@ dependencies {
 
     testImplementation platform("org.junit:junit-bom:$junitVersion")
     testImplementation platform("io.qameta.allure:allure-bom:$allureJavaVersion")
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:4.1.1")
 
     testImplementation "io.qameta.allure:allure-jupiter"
     testImplementation "io.qameta.allure:allure-playwright"
     testImplementation "com.microsoft.playwright:playwright:$playwrightVersion"
 
+    testImplementation "org.springframework:spring-jdbc"
+    testImplementation "org.springframework.security:spring-security-crypto"
+    testImplementation "com.zaxxer:HikariCP"
+    testRuntimeOnly "com.mysql:mysql-connector-j"
+
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     testRuntimeOnly "org.aspectj:aspectjrt:$aspectJVersion"
 }
-
 
 allure {
     version = allureReportVersion
@@ -41,7 +46,14 @@ allure {
     }
 }
 
-test {
+tasks.withType(Test).configureEach {
     useJUnitPlatform()
+    systemProperties System.getProperties().findAll { key, value -> key.toString().startsWith('rfr.') }
     jvmArgumentProviders.add({ ["-javaagent:${configurations.agent.singleFile}"] } as CommandLineArgumentProvider)
+}
+
+tasks.register('installPlaywright', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.microsoft.playwright.CLI'
+    args 'install', 'chromium'
 }

@@ -34,4 +34,14 @@ Thumbs.db
 
 # Local agent notes
 AGENTS.md
-docs/
+docs/*
+!docs/lessons/
+docs/lessons/*/prompts/
+
+# Test artifacts and local credentials
+allure-results/
+.env
+.env.*
+
+# Playwright MCP
+.playwright-mcp/
