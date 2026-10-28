@@ -13,6 +13,12 @@ tasks.register('runAll') {
     dependsOn ':rfr-auth:bootRun', ':rfr-api:bootRun'
 }
 
+tasks.register('e2e') {
+    group = 'verification'
+    description = 'Runs all tests in the rfr-e2e module'
+    dependsOn ':rfr-e2e:test'
+}
+
 
 allprojects {
     apply plugin: 'java'

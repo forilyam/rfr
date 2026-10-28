@@ -18,3 +18,9 @@ MySQL — порт 3306, пользователь `root`, пароль `secret`.
 - Из корня проекта поднимай MySQL командой `docker compose up -d mysql`, затем оба бэкенда командой `./gradlew runAll`. Фронт запускай командой `npm run dev` из `rfr-gql-client`.
 - `runAll` запускает `rfr-auth:bootRun` и `rfr-api:bootRun` параллельно; параллельность Gradle включена в `gradle.properties`. Для одновременного запуска нужны минимум два Gradle worker; не используй `--no-parallel` или `--max-workers=1`.
 - Нужны JDK 25, Node 22+, Docker.
+
+## Тесты
+
+- Из корня проекта запускай `./gradlew e2e`: задача выполняет все тесты модуля `rfr-e2e` через `:rfr-e2e:test`.
+- Перед запуском должны работать MySQL, оба бэкенда и фронт. Запуск тестов согласуй с пользователем.
+- HTML-отчёт — `rfr-e2e/build/reports/tests/test/index.html`.
