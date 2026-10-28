@@ -2,13 +2,59 @@ name: CI
 
 on:
   pull_request:
+  push:
+    branches: [ master ]
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  changes:
+    name: Detect changed modules
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      ci: ${{ steps.filter.outputs.ci }}
+      java: ${{ steps.filter.outputs.java }}
+      auth: ${{ steps.filter.outputs.auth }}
+      api: ${{ steps.filter.outputs.api }}
+      e2e: ${{ steps.filter.outputs.e2e }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            ci:
+              - '.github/workflows/ci.yml'
+            java:
+              - 'build.gradle'
+              - 'settings.gradle'
+              - 'gradle.properties'
+              - 'gradle/**'
+              - 'gradlew'
+              - 'gradlew.bat'
+            auth:
+              - 'rfr-auth/**'
+            api:
+              - 'rfr-api/**'
+            e2e:
+              - 'rfr-e2e/**'
+            frontend:
+              - 'rfr-gql-client/**'
+
   java:
     name: Backend build and e2e compilation
+    needs: changes
+    if: >-
+      ${{ needs.changes.outputs.ci == 'true' ||
+          needs.changes.outputs.java == 'true' ||
+          needs.changes.outputs.auth == 'true' ||
+          needs.changes.outputs.api == 'true' ||
+          needs.changes.outputs.e2e == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -18,11 +64,21 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: false
       - name: Build backends and compile e2e
-        run: ./gradlew :rfr-auth:build :rfr-api:build :rfr-e2e:testClasses
+        env:
+          ALL: ${{ needs.changes.outputs.ci == 'true' || needs.changes.outputs.java == 'true' }}
+        run: >-
+          ./gradlew
+          ${{ (env.ALL == 'true' || needs.changes.outputs.auth == 'true') && ':rfr-auth:build' || '' }}
+          ${{ (env.ALL == 'true' || needs.changes.outputs.api == 'true') && ':rfr-api:build' || '' }}
+          ${{ (env.ALL == 'true' || needs.changes.outputs.e2e == 'true') && ':rfr-e2e:testClasses' || '' }}
 
   frontend:
     name: Frontend build and lint
+    needs: changes
+    if: needs.changes.outputs.ci == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
