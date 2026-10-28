@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/compile_changed.sh\"",
+            "timeout": 600,
+            "async": false,
+            "additionalContextLimit": 0,
+            "statusMessage": "Compiling changed Java and frontend sources"
+          }
+        ]
+      }
+    ]
+  }
+}
