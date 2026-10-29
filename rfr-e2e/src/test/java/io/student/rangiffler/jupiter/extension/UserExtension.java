@@ -6,7 +6,10 @@ import io.student.rangiffler.data.UserRequest;
 import io.student.rangiffler.jupiter.annotation.User;
 
 import java.lang.reflect.Parameter;
+import java.util.Objects;
+import java.util.function.BiFunction;
 
+import org.junit.jupiter.api.TestReporter;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
@@ -16,6 +19,15 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 public final class UserExtension implements BeforeEachCallback, ParameterResolver {
     private static final ExtensionContext.Namespace NAMESPACE =
             ExtensionContext.Namespace.create(UserExtension.class);
+    private final BiFunction<UserRequest, TestReporter, UserFixture> fixtures;
+
+    public UserExtension() {
+        this((request, reporter) -> request.fixture());
+    }
+
+    public UserExtension(BiFunction<UserRequest, TestReporter, UserFixture> fixtures) {
+        this.fixtures = Objects.requireNonNull(fixtures, "User fixture factory must not be null");
+    }
 
     @Override
     public void beforeEach(ExtensionContext context) {
@@ -24,7 +36,9 @@ public final class UserExtension implements BeforeEachCallback, ParameterResolve
             if (parameters[index].isAnnotationPresent(User.class)) {
                 User user = parameters[index].getAnnotation(User.class);
                 if (user != null) {
-                    UserFixture fixture = new UserRequest(user.friends(), user.incomeInvitations()).fixture();
+                    UserFixture fixture = Objects.requireNonNull(fixtures.apply(
+                                    new UserRequest(user.friends(), user.incomeInvitations()), context::publishReportEntry),
+                            "User fixture factory returned null");
                     context.getStore(NAMESPACE).put(key(index), fixture);
                     fixture.create();
                 }
