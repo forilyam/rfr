@@ -36,7 +36,7 @@ rfr/
 │   ├── Реальные контроллеры для пользователей и стран
 │   └── Flyway миграции БД
 ├── rfr-gql-client/        # React + TypeScript Frontend (готов)
-└── rfr-e2e/               # E2E тесты: JUnit 6 + Playwright + Allure 3 (заготовка)
+└── rfr-e2e/               # E2E тесты регистрации, входа и профиля: JUnit 6 + Playwright + Allure 3
 ```
 
 **Порты:**
@@ -74,50 +74,63 @@ Mock контроллеры возвращают статические данн
 все-таки, диплом для SDET / Senior QA Automation и падать в грязь лицом с десятком тестов на весь сервис
 точно не стоит. Итак, приступим!
 
+Нужны JDK 25, Docker и Node.js 22 (не ниже 22.22.0) либо 24+.
+
 #### 1. Запусти зависимости (БД):
 
 ```bash
-bash localenv.sh
+docker compose up -d mysql
 ```
 
-Скрипт запустит MySQL в Docker контейнере.
+Команда запускает MySQL из `compose.yaml` на порту 3306. Данные хранятся в именованном томе `mysql-volume`.
 
-#### 2. Запусти rfr-auth:
+#### 2. Запусти оба бэкенда из корня проекта:
 
 ```bash
-cd rfr-auth
-../gradlew bootRun
+./gradlew runAll
 ```
 
-Или запусти класс с методом main руками. Auth будет доступен на порту 9001: http://localhost:9001
+Задача запускает `rfr-auth:bootRun` и `rfr-api:bootRun` параллельно. Не отключай параллельность и не ограничивай Gradle одним worker.
+Оставь этот терминал работающим. Auth доступен на http://localhost:9001, GraphQL API — `POST http://localhost:8081/graphql`.
 
-#### 3. Запусти rfr-api:
+При необходимости сервисы можно запускать отдельно, каждый в своём терминале:
 
 ```bash
-cd rfr-api
-../gradlew bootRun
+./gradlew :rfr-auth:bootRun
+./gradlew :rfr-api:bootRun
 ```
 
-rfr-api стартанет на порту 8081: http://localhost:8081/graphql
+GraphiQL включён по адресу http://localhost:8081/graphiql, но требует аутентификации: открытие без Bearer-токена вернёт 401.
 
-GraphiQL интерфейс доступен по адресу: http://localhost:8081/graphiql
+#### 3. Установи зависимости и запусти фронт в отдельном терминале:
 
-#### 4. Обнови зависимости и запускай фронт:
+Перед первым запуском создай `rfr-gql-client/.env` по примеру из [README фронтенда](rfr-gql-client/README.md#конфигурация).
 
 ```bash
 cd rfr-gql-client
-npm i
+npm ci
 npm run dev
 ```
 
-Фронт стартанет в твоем браузере на порту 3001: http://localhost:3001/
+Открой фронт в браузере: http://localhost:3001/.
 
-#### 5. Проверь работоспособность
+#### 4. Проверь работоспособность
 
 Кнопка "Login" работает через сервис auth. После успешной авторизации ты попадешь на главную страницу Rangiffler.
 
 Mock контроллеры в rfr-api будут возвращать статические данные из JSON файлов для ленты фотографий.
-Реальная работа с пользователями и странами уже реализована через базу данных.
+Реальная работа с пользователями, странами и дружбой уже реализована через базу данных.
+
+#### 5. Запусти E2E-тесты из корня проекта в отдельном терминале:
+
+```bash
+./gradlew :rfr-e2e:installPlaywright # подготовка Chromium перед первым прогоном
+./gradlew e2e
+```
+
+Перед прогоном должны работать MySQL, оба бэкенда и фронт. Задача `e2e` запускает все тесты `rfr-e2e` при каждом вызове,
+даже если исходники не менялись. HTML-отчёт — `rfr-e2e/build/reports/tests/test/index.html`.
+Выбор отдельных классов и настройки описаны в [README тестов](rfr-e2e/README.md).
 
 
 # Что дальше?
@@ -251,8 +264,9 @@ generateJava {
     );
   }
 ```
-  Здесь первый аргумент - это просто сессия (как и в Niffler), `page, size` - аргументы пагинации, они прилетят с фронта.
-Третий аргумент `String searchQuery` - необязательный аргумент, который фронт отправляет при использовании поиска в таблицах.
+  Первый аргумент `Jwt principal` содержит проверенные claims access token; username берётся из `sub`.
+`page, size` - аргументы пагинации, они прилетят с фронта.
+Аргумент `String searchQuery` - необязательный аргумент, который фронт отправляет при использовании поиска в таблицах.
 Обратите внимание на несколько деталей:
 - `page` и `size` объявлены как `@Nullable Integer`, а не `int`: у аргументов в схеме есть значения по умолчанию, но клиент может явно
   передать `null` - тогда примитивный `int` уронит запрос.
@@ -264,25 +278,25 @@ generateJava {
   `Page`/`Slice` - это ровно то, что ожидает получить фронт, вам лишь придется преобразовать `Page<UserEntity>` (или projection)
 в `Page<User>`, для этого надо воспользоваться методом `map()`, имеющимся в классе `Page`.
 
-  Почитать про пагинацию в JPA Repository, дополнительно, тут: https://www.baeldung.com/spring-data-jpa-pagination-sorting
+  Подробнее о `Pageable`, `Page` и запросах подсчёта — в [документации Spring Data JPA](https://docs.spring.io/spring-data/jpa/reference/repositories/query-methods-details.html#repositories.special-parameters).
 
 ###### Pageable в JpaRepository
 
-  Дело в том, что единственный способ получить функционал пагинации - это доставать данные из БД **одним запросом**.
+  Для пагинации на уровне БД передавайте `Pageable` в метод репозитория, чтобы ограничить выборку нужной страницей.
 
   Это значит, что если нам нужны допустим фотографии юзера с пагинацией, мы не можем сделать так:
 ```java
 UserEntity user = findById(id);
 return user.getPhotos();
 ```
-  В этом коде _просто нет возможности использовать пагинацию._ Но что если нам нужно запросить фотографии юзера с пагинацией?
+  Такой вызов коллекции не передаёт в БД параметры страницы. Для выборки фотографий пользователя с пагинацией нужен отдельный метод репозитория:
 
 ```java
   Page<PhotoEntity> findByUser(@Nonnull UserEntity user,
                                @Nonnull Pageable pageable);
 
 ```
-  Вот так уже сработает - тут всего один запрос, и поэтому он работает с `Pageable`.
+  Этот метод учитывает `Pageable`. Для `Page` Spring Data также может выполнить отдельный запрос подсчёта общего числа записей.
 
 ###### Дружба: одна строка на пару пользователей
 
@@ -319,10 +333,11 @@ public interface FriendshipRepository extends JpaRepository<FriendshipEntity, UU
 (ловим `OptimisticLockingFailureException`). Без явного flush SQL выполнится только на коммите транзакции - уже за пределами
 `try/catch` в методе сервиса.
 
-###### Списки пользователей со статусом дружбы одним запросом
+###### Списки пользователей со статусом дружбы в одной выборке
 
-  Все списки людей (All People, Friends, Income/Outcome invitations) достаются из БД одним запросом с пагинацией и сразу со статусом дружбы
-относительно текущего пользователя. Для этого используется projection - record `UserWithStatus`, который заполняется прямо в JPQL
+  Все списки людей (All People, Friends, Income/Outcome invitations) достаются из БД с пагинацией и сразу со статусом дружбы
+относительно текущего пользователя, без отдельного запроса статуса для каждой строки. Для `Page` возможен дополнительный запрос подсчёта.
+Для выборки используется projection - record `UserWithStatus`, который заполняется прямо в JPQL
 через `select new`:
 ```java
 public record UserWithStatus(
@@ -481,37 +496,23 @@ message UsersResponse {
 (`JwtAuthenticationConverter` в `RangifflerApiConfiguration`). `id_token` предназначен фронтенду (`aud` = client_id),
 поэтому API его отвергает с 401. Фронтенд использует `id_token` только как `id_token_hint` при logout.
 
-   Access token живет 10 минут. При logout фронтенд отзывает его через `POST /oauth2/revoke` (RFC 7009, публичный клиент
+   Access token живет 30 минут (`access-token-time-to-live: 30m` в `rfr-auth/src/main/resources/application.yaml`). При logout фронтенд отзывает его через `POST /oauth2/revoke` (RFC 7009, публичный клиент
 идентифицируется по `client_id`), а затем вызывает OIDC logout. Учтите: access token - самодостаточный JWT, `rfr-api`
 проверяет его локально по подписи и не знает об отзыве, поэтому отозванный токен продолжает приниматься API до `exp`.
 Отзыв делает недействительной авторизацию на стороне `rfr-auth`; мгновенный отказ API потребовал бы opaque-токенов
 и introspection.
 
-   Для локального тестирования вы можете открыть страницу
-GraphiQL (`spring.graphql.graphiql.enabled: true` уже включен в `application.yml`):
-```java
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        corsCustomizer.apply(http);
-        http.csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(customizer ->
-                customizer
-                    .requestMatchers(HttpMethod.POST, "/graphql").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/graphiql/**").permitAll()
-                    .anyRequest().authenticated()
-            )
-            .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
-        return http.build();
-    }
-```
-   Сами запросы из GraphiQL все равно потребуют токен - добавьте заголовок `Authorization: Bearer <access_token>` в разделе Headers
-(токен можно взять в `localStorage` фронта после логина).
+   GraphiQL включён настройкой `spring.graphql.graphiql.enabled: true` в `application.yml`,
+но текущий [SecurityFilterChain](rfr-api/src/main/java/io/student/rangiffler/config/RangifflerApiConfiguration.java)
+требует аутентификации для `GET /graphiql`: открыть страницу без Bearer-токена нельзя.
+Запросы `POST /graphql` также требуют access token с нужными правами на уровне контроллеров.
+Токен можно взять в `localStorage` фронта после логина и передать заголовком `Authorization: Bearer <access_token>`.
 
 ###### GraphQL контроллеры и @SchemaMapping
 
    Сгенерированные DGS Codegen классы (или ваши record'ы) можно "наполнять" данными по частям с помощью `@SchemaMapping`.
 Таким образом если клиент запрашивает:
-```json
+```graphql
      query user {
      user {
        id
@@ -543,7 +544,7 @@ GraphiQL (`spring.graphql.graphiql.enabled: true` уже включен в `appl
                             @Argument("page") @Nullable Integer page,
                             @Argument("size") @Nullable Integer size,
                             @Argument("searchQuery") @Nullable String searchQuery) {
-    // получит на вход User user и добавит внутрь него Page<User> с друзьями
+    // Друзья загружаются только если поле запрошено клиентом
     return userService.friends(
         user.getUsername(),
         pageRequest(page, size),
@@ -555,7 +556,8 @@ GraphiQL (`spring.graphql.graphiql.enabled: true` уже включен в `appl
 
 ###### Ошибки GraphQL
 
-  GraphQL отвечает HTTP 200 даже при ошибке - ошибка приходит в массиве `errors` ответа. Чтобы фронт мог показать пользователю
+  Ошибки выполнения GraphQL-запроса могут прийти с HTTP 200 в массиве `errors` ответа.
+Невалидный или просроченный Bearer-токен отклоняется фильтрами с HTTP 401 до GraphQL. Чтобы фронт мог показать пользователю
 понятный текст, а внутренние детали не утекали наружу, исключения классифицирует `GraphQlExceptionResolver`:
 
 | Исключение | `extensions.classification` |
@@ -579,26 +581,14 @@ GraphiQL (`spring.graphql.graphiql.enabled: true` уже включен в `appl
 В общем случае, с фронта уходит ID изменяемого объекта. Поэтому особое внимание необходимо уделить контролю доступа к объекту - не пытается 
 ли пользователь отредактировать чужое фото, или поставить второй лайк под фото, которое уже лайкнул ранее.
 
-#### 6. Подготовить структуру тестового "фреймворка", подумать о том какие прекондишены и как вы будете создавать
+#### 6. Расширить существующие E2E-тесты и предусловия
 
-Здесь однозначно понадобится возможность API-логина и работы со всеми возможными preconditions проекта - фотками,
-пользователями и т.д. Например, было бы хорошо иметь тесты примерно такого вида:
-```java
-@Test
-@DisplayName("...")
-@Tag("...")
-@ApiLogin(user = @User(photos = @Photo(country = RUSSIA)))
-void exampleTest(User createdUser) { ... }
-
-@Test
-@DisplayName("...")
-@Tag("...")
-@ApiLogin(user = @TestUser(photos = @Photo(country = INDIA), partners = {
-        @Partner(status = FRIEND, photos = @Photo(country = CANADA, imageClasspath = "cat.jpeg")),
-        @Partner(status = INCOME_INVITATION, photos = @Photo(country = CANADA, imageClasspath = "dog.jpeg")),
-        @Partner(status = OUTCOME_INVITATION, photos = @Photo(country = AUSTRALIA, imageClasspath = "fish.jpeg"))}))
-void exampleTest2(User createdUser) { ... }
-```
+В `rfr-e2e` уже есть сценарии регистрации, входа с правильными и неправильными данными, сохранения и сброса профиля.
+Параметр `@User TestUser user` создаёт пользователя через SQL-фикстуру `UserFixture`; расширение `UserExtension`
+хранит фикстуру в `ExtensionContext.Store` и обеспечивает её закрытие после теста.
+Вход выполняется через UI, API-логин и подстановка токенов в localStorage в текущих E2E не используются.
+Для новых сценариев можно расширять подготовку данных, сохраняя разделение фикстур, JUnit extensions и Page Objects.
+Подробности — в [README тестов](rfr-e2e/README.md) и [инструкциях модуля](rfr-e2e/AGENTS.md).
 
 #### 7. Реализовать достаточное, на твой взгляд, покрытие e-2-e тестами
 

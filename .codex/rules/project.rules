@@ -1,0 +1,95 @@
+prefix_rule(
+    pattern = [["./gradlew", "../gradlew", "gradle"], ["runAll", "bootRun", ":rfr-auth:bootRun", ":rfr-api:bootRun", "e2e", "test", ":rfr-e2e:test", ":rfr-auth:test", ":rfr-api:test", ":rfr-e2e:installPlaywright", "--stop"]],
+    decision = "allow",
+    justification = "Запуск локальных бэкендов и тестов проекта разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["rtk", ["gradlew", "gradle"], ["runAll", "bootRun", ":rfr-auth:bootRun", ":rfr-api:bootRun", "e2e", "test", ":rfr-e2e:test", ":rfr-auth:test", ":rfr-api:test", ":rfr-e2e:installPlaywright", "--stop"]],
+    decision = "allow",
+    justification = "Запуск локальных бэкендов и тестов через RTK разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["npm", "run", ["dev", "preview", "test"]],
+    decision = "allow",
+    justification = "Запуск локального фронтенда и его тестов разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["rtk", "npm", "run", ["dev", "preview", "test"]],
+    decision = "allow",
+    justification = "Запуск локального фронтенда и его тестов через RTK разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["docker", "compose", "up", "-d", "mysql"],
+    decision = "allow",
+    justification = "Запуск MySQL проекта разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["rtk", "docker", "compose", "up", "-d", "mysql"],
+    decision = "allow",
+    justification = "Запуск MySQL проекта через RTK разрешён заранее",
+)
+
+prefix_rule(
+    pattern = ["docker", "compose", ["start", "stop", "restart"], "mysql"],
+    decision = "allow",
+    justification = "Управление MySQL проекта разрешено заранее",
+)
+
+prefix_rule(
+    pattern = ["rtk", "docker", "compose", ["start", "stop", "restart"], "mysql"],
+    decision = "allow",
+    justification = "Управление MySQL проекта через RTK разрешено заранее",
+)
+
+prefix_rule(
+    pattern = [["kill", "/bin/kill"], "-TERM"],
+    decision = "allow",
+    justification = "Разрешено останавливать только проверенные процессы локального стенда и тестов проекта",
+)
+
+prefix_rule(
+    pattern = ["rtk", ["proxy", "bypass"], ["kill", "/bin/kill"], "-TERM"],
+    decision = "allow",
+    justification = "Разрешено останавливать через RTK только проверенные процессы локального стенда и тестов проекта",
+)
+
+def forbid(prefix):
+    locations = ["", "/bin/", "/usr/bin/", "/usr/local/bin/", "/opt/homebrew/bin/", "/opt/homebrew/opt/coreutils/libexec/gnubin/", "/opt/homebrew/opt/findutils/libexec/gnubin/"]
+    git = [location + "git" for location in locations]
+    prefix_rule(
+        pattern = prefix + [git, ["push", "send-pack", "rm", "clean"]],
+        decision = "forbidden",
+        justification = "Отправка Git и удаление запрещены; оставь коммиты локально, вместо удаления используй mv в .<имя>.<время>.bak",
+    )
+    # Глобальные параметры и обёртки скрывают запрещённую операцию от сравнения префиксов.
+    prefix_rule(
+        pattern = prefix + [git, ["-C", "-C.", "-C..", "-c", "--git-dir", "--git-dir=.git", "--work-tree", "--work-tree=.", "--namespace", "--config-env", "--bare", "-p", "--paginate", "-P", "--no-pager", "--no-replace-objects", "--literal-pathspecs", "--no-literal-pathspecs", "--glob-pathspecs", "--noglob-pathspecs", "--icase-pathspecs", "--no-optional-locks", "--no-lazy-fetch", "--no-advice"]],
+        decision = "forbidden",
+        justification = "Глобальные параметры Git запрещены, так как обходят запрет push и удаления; используй git без глобальных параметров из каталога проекта",
+    )
+    prefix_rule(
+        pattern = prefix + [[location + command for location in locations for command in ["rm", "grm", "unlink", "gunlink", "rmdir", "grmdir", "find", "gfind"]]],
+        decision = "forbidden",
+        justification = "Команды удаления и find запрещены; для поиска используй rg или fd, вместо удаления используй mv в .<имя>.<время>.bak",
+    )
+    prefix_rule(
+        pattern = prefix + [[location + command for location in locations for command in ["env", "genv", "xargs", "gxargs", "command", "exec"]]],
+        decision = "forbidden",
+        justification = "Обёртка может скрыть отправку Git или удаление; вызывай разрешённую команду напрямую",
+    )
+
+forbid([])
+forbid(["rtk"])
+forbid(["rtk", "proxy"])
+forbid(["rtk", "bypass"])
+forbid(["/opt/homebrew/bin/rtk"])
+forbid(["/opt/homebrew/bin/rtk", "proxy"])
+forbid(["/opt/homebrew/bin/rtk", "bypass"])
+forbid(["/usr/local/bin/rtk"])
+forbid(["/usr/local/bin/rtk", "proxy"])
+forbid(["/usr/local/bin/rtk", "bypass"])

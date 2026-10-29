@@ -4,36 +4,44 @@
 
 ## Модули и порты
 
-| Модуль | Что это | Порт |
-|---|---|---|
-| `rfr-auth` | Spring Authorization Server, схема `rangiffler-auth` | 9001 |
-| `rfr-api` | GraphQL API `/graphql`, схема `rangiffler-api`; фото и лента — моки из `src/main/resources/mock/*.json` | 8081 |
-| `rfr-gql-client` | React + Apollo, собирается отдельно от Gradle (`npm run dev`) | 3001 |
-| `rfr-e2e` | E2E-тесты: JUnit 6, Playwright Java, Allure 3 | — |
+| Модуль | Что это | Порт | Инструкции |
+|---|---|---|---|
+| `rfr-auth` | Spring Authorization Server, схема `rangiffler-auth` | 9001 | [AGENTS.md](rfr-auth/AGENTS.md) |
+| `rfr-api` | GraphQL API `/graphql`, схема `rangiffler-api`; фото и лента — моки из `src/main/resources/mock/*.json` | 8081 | [AGENTS.md](rfr-api/AGENTS.md) |
+| `rfr-gql-client` | React + Apollo, собирается отдельно от Gradle (`npm run dev`) | 3001 | [AGENTS.md](rfr-gql-client/AGENTS.md) |
+| `rfr-e2e` | E2E-тесты: JUnit 6, Playwright Java, Allure 3 | — | [AGENTS.md](rfr-e2e/AGENTS.md) |
 
 MySQL — порт 3306, пользователь `root`, пароль `secret`.
 
 ## Окружение
 
-- Не запускай `localenv.sh`: он останавливает и удаляет **все** Docker-контейнеры машины. Поднимай только MySQL (`docker run --name rfr-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=secret -d mysql:8.4.7`), сервисы и фронт.
+- Из корня проекта поднимай MySQL командой `docker compose up -d mysql`, затем оба бэкенда командой `./gradlew runAll`. Фронт запускай командой `npm run dev` из `rfr-gql-client`.
+- `runAll` запускает `rfr-auth:bootRun` и `rfr-api:bootRun` параллельно; параллельность Gradle включена в `gradle.properties`. Для одновременного запуска нужны минимум два Gradle worker; не используй `--no-parallel` или `--max-workers=1`.
 - Нужны JDK 25, Node 22+, Docker.
 
-## Команды
+## Разрешения агента
 
-```bash
-./gradlew :rfr-e2e:installPlaywright
-./gradlew :rfr-e2e:test --tests '*RegistrationTest' --rerun-tasks
-./gradlew :rfr-e2e:test --tests '*MainPageTest' --rerun-tasks
-./gradlew :rfr-e2e:allureReport
-```
+- Разрешено без отдельного подтверждения запускать, останавливать и перезапускать локальные бэкенды, фронтенд, MySQL и тесты этого проекта, включая подготовку Chromium для e2e.
+- Перед тестовым прогоном назови выбранные тесты; ждать подтверждения не требуется.
+- Для MySQL используй `docker compose up -d mysql` и `docker compose start/stop/restart mysql`. Не удаляй контейнеры и тома; не запускай `localenv.sh`.
+- Бэкенды, фронтенд и тесты останавливай через Ctrl+C в их сессии либо `kill -TERM <PID>`, предварительно проверив принадлежность процесса этому проекту. Не останавливай посторонние процессы.
+- `git push` запрещён во всех формах, в том числе при создании ветки или рабочего дерева и при использовании глобальных параметров Git, абсолютных путей, обёрток и скриптов. Коммиты оставляй локально.
+- Удалять файлы и каталоги запрещено, в том числе через `rm`, `grm`, другие команды, скрипты и инструменты редактирования. Вместо удаления перемещай в `.<имя>.<время>.bak`; резервные копии не коммить.
+- Правила команд находятся в `.codex/rules/project.rules`. Они проверяют префиксы команд и не заменяют эти ограничения для других форм записи и инструментов.
 
-Настройки тестов — `TestConfig`: `-Drfr.<ключ>=…` или переменная `RFR_<КЛЮЧ>`, иначе значение по умолчанию. Подробности — `rfr-e2e/README.md`.
+## Автоматическая компиляция
 
-## Правила для rfr-e2e
+- `.codex/hooks.json` подключает синхронный `PostToolUse`-хук `.codex/hooks/compile_changed.sh`: после изменения содержимого Java-файлов он запускает `compileJava` или `compileTestJava` затронутых модулей, без выполнения тестов.
+- Обработчик написан на Bash; Node.js используется только для чтения и формирования JSON. Нужны Git, `shasum` и `lockf` на macOS либо `flock` на Linux.
+- После изменения фронтенда хук выполняет `npm run build`, затем ESLint для изменённых JS/TS-файлов из `rfr-gql-client` с относительными путями; изменения конфигурации ESLint или npm-зависимостей запускают полный `npm run lint`. Линт выполняется и при ошибке сборки.
+- Вывод команд и коды завершения возвращаются в контекст агента через `additionalContext`. Исправляй обнаруженные ошибки перед завершением работы.
+- Хук замечает изменения после вызовов инструментов, включая shell и MCP; неизменённые файлы не вызывают повторную сборку. Состояние хранится во временном каталоге отдельно для каждого репозитория и сессии.
+- Для включения перезапусти Codex и доверь проектную `.codex/` и хук через `/hooks`.
+- Проверки самого хука запускаются командой `bash .codex/hooks/test_compile_changed.sh`.
 
-- Структура пакетов — `rfr-e2e/README.md`, раздел «Архитектура»: `config`, `jupiter`, `data`, `api`, `ui`, `assertions`, `test`. Новые классы кладутся в существующие пакеты.
-- Page Objects и компоненты — по skill `rfr-page-objects` (`.agents`).
-- Без комментариев и Javadoc в коде `rfr-e2e` (Java, Gradle, SQL, properties): смысл передают имена и `@Step`.
-- Вход в тестах только через UI; токены в localStorage не подставлять.
-- Проход сценария через Playwright MCP — не запуск теста. Успех подтверждается JUnit-прогоном через Gradle.
-- Тестовые данные создаются и удаляются фикстурами (`@User` → `UserExtension` → `UserFixture`), без широких `DELETE`/`TRUNCATE`.
+## Тесты
+
+- Из корня проекта запускай `./gradlew e2e`: задача выполняет все тесты модуля `rfr-e2e` через `:rfr-e2e:test`.
+- Каждый запуск выполняет тесты заново, даже если исходники не изменились.
+- Перед запуском должны работать MySQL, оба бэкенда и фронт. Запуск и остановка разрешены согласно разделу «Разрешения агента».
+- HTML-отчёт — `rfr-e2e/build/reports/tests/test/index.html`.
