@@ -32,8 +32,7 @@ public final class ProfilePage {
         this.location = page.getByRole(AriaRole.COMBOBOX,
                 new Page.GetByRoleOptions().setName("Location").setExact(true));
         this.upload = page.getByLabel("Update avatar", new Page.GetByLabelOptions().setExact(true));
-        this.avatar = page.getByRole(AriaRole.MAIN).locator("img[src^='data:image/']")
-                .and(page.getByRole(AriaRole.IMG, new Page.GetByRoleOptions().setName("").setExact(true)));
+        this.avatar = page.locator("main img[src^='data:image/']:not([alt])");
         this.save = page.getByRole(AriaRole.BUTTON,
                 new Page.GetByRoleOptions().setName("Save").setExact(true));
         this.reset = page.getByRole(AriaRole.BUTTON,
@@ -86,6 +85,7 @@ public final class ProfilePage {
 
     @Step("Проверить аватар профиля: {source}")
     public ProfilePage checkAvatar(String source) {
+        assertThat(avatar).isVisible();
         assertThat(avatar).hasAttribute("src", source);
         return this;
     }
