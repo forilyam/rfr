@@ -3,6 +3,8 @@ package io.student.rangiffler.jupiter.probe;
 import io.student.rangiffler.data.TestUser;
 import io.student.rangiffler.data.UserFixture;
 import io.student.rangiffler.data.UserRequest;
+import io.student.rangiffler.data.db.ApiProfile;
+import io.student.rangiffler.data.db.Friendship;
 import io.student.rangiffler.jupiter.annotation.User;
 import io.student.rangiffler.jupiter.extension.UserExtension;
 
@@ -31,7 +33,10 @@ import org.junit.platform.testkit.engine.EngineExecutionResults;
 import org.junit.platform.testkit.engine.EngineTestKit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
+import static io.student.rangiffler.data.db.FriendshipStatus.PENDING;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
 
@@ -49,7 +54,26 @@ final class UserExtensionTest {
         EngineExecutionResults execution = execute(selectMethod(Cases.class, "requested", TestReporter.class, TestUser.class));
         assertThat("Annotation values dont reach the fixture factory", reports(execution).stream()
                 .filter(entry -> entry.get("phase").equals("create"))
-                .map(entry -> List.of(entry.get("friends"), entry.get("income"))).toList(), is(List.of(List.of("3", "7"))));
+                .map(entry -> List.of(entry.get("friends"), entry.get("income"), entry.get("outcome"))).toList(),
+                is(List.of(List.of("3", "7", "5"))));
+    }
+
+    @Test
+    void outcomeInvitationExistsDuringBodyAndDoesntRemainAfterBody() {
+        EngineExecutionResults execution = execute(selectClass(OutcomeInvitationCase.class));
+        assertThat("An outgoing invitation is missing during the test or survives fixture cleanup", List.of(
+                        outcome(execution), reports(execution).stream().map(entry -> List.of(
+                                new Friendship(entry.get("username"), entry.get("invitee"), PENDING).exist(),
+                                new ApiProfile(entry.get("invitee")).exist())).toList()),
+                is(List.of(List.of(1L, 0L, 0L, List.of("body")), List.of(List.of(false, false)))));
+    }
+
+    @Test
+    void negativeOutcomeCountCannotReachFixtureFactory() {
+        EngineExecutionResults execution = execute(selectClass(InvalidOutcomeCase.class));
+        assertThat("A negative outcome count reaches user creation or throws the wrong exception",
+                execution.testEvents().failed().map(event -> event.getRequiredPayload(TestExecutionResult.class)
+                        .getThrowable().orElseThrow()).toList(), contains(instanceOf(IllegalArgumentException.class)));
     }
 
     @Test
@@ -119,7 +143,7 @@ final class UserExtensionTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"negativeFriends", "negativeIncome"})
+    @ValueSource(strings = {"negativeFriends", "negativeIncome", "negativeOutcome"})
     void invalidAnnotationDoesntCreateFixture(String method) {
         EngineExecutionResults execution = execute(selectMethod(Cases.class, method, TestReporter.class, TestUser.class));
         assertThat("An invalid annotation creates a fixture or reaches the body", List.of(
@@ -203,6 +227,29 @@ final class UserExtensionTest {
         return Optional.ofNullable(failure.getCause()).map(this::failureMessage).orElseGet(failure::getMessage);
     }
 
+    static final class OutcomeInvitationCase {
+        @Test
+        void scenario(TestReporter reporter, @User(outcomeInvitations = 1) TestUser user) {
+            String invitee = user.outcomeInvitations().getFirst().username();
+            reporter.publishEntry(Map.of("phase", "body", "username", user.username(), "invitee", invitee));
+            assertThat("An outgoing invitation or invitee profile is missing during the test", List.of(
+                            new Friendship(user.username(), invitee, PENDING).exist(), new ApiProfile(invitee).exist()),
+                    is(List.of(true, true)));
+        }
+    }
+
+    static final class InvalidOutcomeCase {
+        @RegisterExtension
+        static final UserExtension extension = new UserExtension((request, reporter) -> {
+            throw new AssertionError("A negative outcome count reached the fixture factory");
+        });
+
+        @Test
+        void scenario(@User(outcomeInvitations = -1) TestUser user) {
+            throw new AssertionError("A negative outcome count reached the test body");
+        }
+    }
+
     static final class Cases {
         @RegisterExtension
         static final UserExtension extension = new UserExtension(ReportedFixture::new);
@@ -213,7 +260,7 @@ final class UserExtensionTest {
         }
 
         @Test
-        void requested(TestReporter reporter, @User(friends = 3, incomeInvitations = 7) TestUser user) {
+        void requested(TestReporter reporter, @User(friends = 3, incomeInvitations = 7, outcomeInvitations = 5) TestUser user) {
             reporter.publishEntry(Map.of("phase", "body", "username", user.username()));
         }
 
@@ -236,6 +283,11 @@ final class UserExtensionTest {
 
         @Test
         void negativeIncome(TestReporter reporter, @User(incomeInvitations = -7) TestUser user) {
+            reporter.publishEntry(Map.of("phase", "body", "username", user.username()));
+        }
+
+        @Test
+        void negativeOutcome(TestReporter reporter, @User(outcomeInvitations = -5) TestUser user) {
             reporter.publishEntry(Map.of("phase", "body", "username", user.username()));
         }
 
@@ -361,7 +413,8 @@ final class UserExtensionTest {
         private ReportedFixture(UserRequest request, TestReporter reporter, Runnable creation, Runnable cleanup) {
             this.user = TestUser.unique()
                     .withFriends(IntStream.range(0, request.friends()).mapToObj(index -> TestUser.unique()).toList())
-                    .withIncomeInvitations(IntStream.range(0, request.incomeInvitations()).mapToObj(index -> TestUser.unique()).toList());
+                    .withIncomeInvitations(IntStream.range(0, request.incomeInvitations()).mapToObj(index -> TestUser.unique()).toList())
+                    .withOutcomeInvitations(IntStream.range(0, request.outcomeInvitations()).mapToObj(index -> TestUser.unique()).toList());
             this.reporter = reporter;
             this.creation = creation;
             this.cleanup = cleanup;
@@ -376,7 +429,8 @@ final class UserExtensionTest {
         @Override
         public void create() {
             reporter.publishEntry(Map.of("phase", "create", "username", user.username(),
-                    "friends", Integer.toString(user.friends().size()), "income", Integer.toString(user.incomeInvitations().size())));
+                    "friends", Integer.toString(user.friends().size()), "income", Integer.toString(user.incomeInvitations().size()),
+                    "outcome", Integer.toString(user.outcomeInvitations().size())));
             creation.run();
         }
 

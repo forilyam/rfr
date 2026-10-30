@@ -4,3 +4,18 @@ args = [
     "@playwright/mcp@0.0.83",
     "--isolated",
 ]
+
+[mcp_servers.playwright.tools.browser_click]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_fill_form]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_evaluate]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_hover]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_type]
+approval_mode = "approve"

@@ -2,6 +2,7 @@ package io.student.rangiffler.ui.page;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.Response;
 import com.microsoft.playwright.options.AriaRole;
 import io.qameta.allure.Step;
 import io.student.rangiffler.config.TestConfig;
@@ -30,13 +31,13 @@ public final class PeoplePage {
 
     @Step("Открыть список людей")
     public PeoplePage open() {
-        page.navigate(URL);
+        page.waitForResponse(response -> operation(response, "GetFriends"), () -> page.navigate(URL)).finished();
         return this;
     }
 
     @Step("Открыть список друзей")
     public PeoplePage clickFriends() {
-        tabs.getByRole(AriaRole.TAB, new Locator.GetByRoleOptions().setName("Friends").setExact(true)).click();
+        clickTab("Friends", "GetFriends");
         return this;
     }
 
@@ -48,15 +49,13 @@ public final class PeoplePage {
 
     @Step("Открыть входящие приглашения")
     public PeoplePage clickIncomeInvitations() {
-        tabs.getByRole(AriaRole.TAB,
-                new Locator.GetByRoleOptions().setName("Income invitations").setExact(true)).click();
+        clickTab("Income invitations", "GetInvitations");
         return this;
     }
 
     @Step("Открыть исходящие приглашения")
     public PeoplePage clickOutcomeInvitations() {
-        tabs.getByRole(AriaRole.TAB,
-                new Locator.GetByRoleOptions().setName("Outcome invitations").setExact(true)).click();
+        clickTab("Outcome invitations", "GetOutcomeInvitations");
         return this;
     }
 
@@ -109,6 +108,36 @@ public final class PeoplePage {
         return this;
     }
 
+    @Step("Проверить отсутствие пользователя в списке: {username}")
+    public PeoplePage checkNoUser(String username) {
+        assertThat(row(username)).hasCount(0);
+        return this;
+    }
+
+    @Step("Проверить кнопку Remove у друга: {username}")
+    public PeoplePage checkFriendActions(String username) {
+        assertThat(row(username).getByRole(AriaRole.BUTTON,
+                new Locator.GetByRoleOptions().setName("Remove").setExact(true))).isVisible();
+        return this;
+    }
+
+    @Step("Проверить кнопки Accept и Decline у отправителя приглашения: {username}")
+    public PeoplePage checkIncomeInvitationActions(String username) {
+        assertThat(row(username).getByRole(AriaRole.BUTTON,
+                new Locator.GetByRoleOptions().setName("Accept").setExact(true))).isVisible();
+        assertThat(row(username).getByRole(AriaRole.BUTTON,
+                new Locator.GetByRoleOptions().setName("Decline").setExact(true))).isVisible();
+        return this;
+    }
+
+    @Step("Проверить статус Waiting и кнопку Cancel у приглашённого: {username}")
+    public PeoplePage checkOutcomeInvitationActions(String username) {
+        assertThat(row(username).getByText("Waiting...", new Locator.GetByTextOptions().setExact(true))).isVisible();
+        assertThat(row(username).getByRole(AriaRole.BUTTON,
+                new Locator.GetByRoleOptions().setName("Cancel").setExact(true))).isVisible();
+        return this;
+    }
+
     @Step("Проверить пользователей в списке: {usernames}")
     public PeoplePage checkUsers(List<String> usernames) {
         checkPeopleCount(usernames.size());
@@ -124,5 +153,20 @@ public final class PeoplePage {
     private Locator row(String username) {
         return panel.getByRole(AriaRole.ROW).filter(new Locator.FilterOptions().setHas(
                 page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName(username).setExact(true))));
+    }
+
+    private void clickTab(String name, String query) {
+        Locator tab = tabs.getByRole(AriaRole.TAB, new Locator.GetByRoleOptions().setName(name).setExact(true));
+        if ("true".equals(tab.getAttribute("aria-selected"))) {
+            tab.click();
+        } else {
+            page.waitForResponse(response -> operation(response, query), tab::click).finished();
+        }
+    }
+
+    private boolean operation(Response response, String name) {
+        return response.url().endsWith("/graphql") && response.request().method().equals("POST")
+                && Pattern.compile("\"operationName\"\\s*:\\s*\"" + Pattern.quote(name) + "\"")
+                .matcher(Objects.toString(response.request().postData(), "")).find();
     }
 }

@@ -5,14 +5,16 @@ import io.student.rangiffler.utils.RandomDataUtils;
 import java.util.List;
 import java.util.stream.Stream;
 
-public record TestUser(String username, String password, List<TestUser> friends, List<TestUser> incomeInvitations) {
+public record TestUser(String username, String password, List<TestUser> friends, List<TestUser> incomeInvitations,
+                       List<TestUser> outcomeInvitations) {
     public TestUser {
         friends = List.copyOf(friends);
         incomeInvitations = List.copyOf(incomeInvitations);
+        outcomeInvitations = List.copyOf(outcomeInvitations);
     }
 
     public TestUser(String username, String password) {
-        this(username, password, List.of(), List.of());
+        this(username, password, List.of(), List.of(), List.of());
     }
 
     public static TestUser unique() {
@@ -21,12 +23,17 @@ public record TestUser(String username, String password, List<TestUser> friends,
 
     public TestUser withFriends(List<TestUser> friends) {
         return new TestUser(username, password,
-                Stream.concat(this.friends.stream(), friends.stream()).toList(), incomeInvitations);
+                Stream.concat(this.friends.stream(), friends.stream()).toList(), incomeInvitations, outcomeInvitations);
     }
 
     public TestUser withIncomeInvitations(List<TestUser> invitations) {
         return new TestUser(username, password, friends,
-                Stream.concat(incomeInvitations.stream(), invitations.stream()).toList());
+                Stream.concat(incomeInvitations.stream(), invitations.stream()).toList(), outcomeInvitations);
+    }
+
+    public TestUser withOutcomeInvitations(List<TestUser> invitations) {
+        return new TestUser(username, password, friends, incomeInvitations,
+                Stream.concat(outcomeInvitations.stream(), invitations.stream()).toList());
     }
 
     @Override

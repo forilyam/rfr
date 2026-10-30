@@ -37,7 +37,7 @@ public final class UserExtension implements BeforeEachCallback, ParameterResolve
                 User user = parameters[index].getAnnotation(User.class);
                 if (user != null) {
                     UserFixture fixture = Objects.requireNonNull(fixtures.apply(
-                                    new UserRequest(user.friends(), user.incomeInvitations()), context::publishReportEntry),
+                                    new UserRequest(user), context::publishReportEntry),
                             "User fixture factory returned null");
                     context.getStore(NAMESPACE).put(key(index), fixture);
                     fixture.create();

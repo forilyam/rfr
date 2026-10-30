@@ -1,0 +1,160 @@
+Результаты проверки тестовых данных и ресурсов rfr-e2e
+Дата проверки: 30 октября 2026 года
+
+ИТОГ
+
+Четыре условия подтверждены. Изоляция мишеней подтверждена для штатного
+запуска через Gradle, но аннотации @ProbeTarget в текущем коде нет.
+Исходники и настройки проекта во время проверки не изменялись.
+Диагностические файлы создавались только во временном каталоге.
+
+1. Тесты не зависят от пользователей, созданных вне них
+
+Подтверждено чтением всех 11 тестовых классов.
+
+- Тесты входа, профиля и People получают пользователей через @User.
+  UserRequest.fixture() создаёт основного пользователя через
+  SingleUserFixture(TestUser.unique()).
+- UserWithRelationsFixture создаёт каждого партнёра через отдельный
+  SingleUserFixture(TestUser.unique()). Связи принадлежат тому же дереву.
+- RegistrationTest генерирует TestUser.unique(), регистрирует пользователя
+  через UI и очищает его в @AfterEach через SingleUserFixture.close().
+- Негативный тест входа с несуществующим пользователем генерирует новый
+  missing_<UUID>. Существующая учётная запись ему не требуется.
+- FriendshipTest создаёт участников внутри каждого теста и освобождает
+  фикстуры через try-with-resources.
+- Мишени UserExtensionTest используют локально созданные объекты данных
+  или собственные реальные фикстуры.
+- @StaticUser используется только мишенями UsersQueueExtensionTest.
+
+Зависимостей от заранее заведённых пользователей вне статического пула
+не найдено. Это вывод по текущим исходникам; отдельный запуск на полностью
+пустой базе данных не выполнялся.
+
+Основные файлы:
+  rfr-e2e/src/test/java/io/student/rangiffler/data/UserRequest.java
+  rfr-e2e/src/test/java/io/student/rangiffler/data/UserWithRelationsFixture.java
+  rfr-e2e/src/test/java/io/student/rangiffler/test/auth/RegistrationTest.java
+  rfr-e2e/src/test/java/io/student/rangiffler/test/auth/LoginNegativeTest.java
+
+2. После прогона доступны все три пользователя пула
+
+Подтверждено после полного прогона в той же JVM, которая выполняла тесты.
+Полный прогон: 47 тестов, 0 отказов, 0 ошибок, 0 пропусков; 42 секунды.
+
+Временный JUnit Platform TestExecutionListener в testPlanExecutionFinished()
+после завершения всех тестов одновременно взял три StaticUserFixture
+через публичные create() и user(), затем закрыл их через try-with-resources.
+После возврата повторный тройной заём также завершился успешно.
+Приватные поля очереди и reflection не использовались.
+
+JVM PID: 55148
+Завершение плана: 2026-10-30T12:11:35.736646Z
+Количество завершённых планов: 1
+Начато и завершено внешних тестов: 47
+
+Результаты:
+  pool_available=3
+  distinct=3
+  pool_available_after_return=3
+  distinct_after_return=3
+  pool_audit=PASS
+
+Полученные пользователи:
+  rfr_static_iris
+  rfr_static_leon
+  rfr_static_nora
+
+Пароли не выводились. Проверка выполнена до завершения test-worker JVM,
+поэтому результат не подменён инициализацией нового пула в новом процессе.
+После завершения JVM её очередь в памяти больше не существует.
+
+3. После прогона в friendship нет тестовых связей
+
+Подтверждено читающими SQL-запросами к схеме rangiffler-api.
+Итоговый снимок сделан после полного прогона и отдельного запуска
+UserExtensionTest без браузера. Ручная очистка БД не выполнялась.
+
+Проверка                                         Исходно   После прогонов
+Все строки friendship                             0         0
+Связи с участником, чей username начинается rfr_  0         0
+
+Запросы:
+  SELECT COUNT(*) FROM friendship;
+
+  SELECT COUNT(*) FROM friendship f
+  JOIN user requester ON requester.id = f.requester_id
+  JOIN user addressee ON addressee.id = f.addressee_id
+  WHERE LEFT(requester.username, 4) = 'rfr_'
+     OR LEFT(addressee.username, 4) = 'rfr_';
+
+Итоговый общий COUNT равен нулю: таблица пуста целиком, а не только
+в пределах выбранного префикса. Результат относится к моменту снимка.
+
+Владение и очистка по коду:
+  Store метода владеет корневой фикстурой и закрывает её автоматически.
+  UserWithRelationsFixture хранит origin, partners и свои Friendship.
+  TearDown закрывает свои связи, затем партнёров, затем origin.
+  SingleUserFixture удаляет связи, профиль API и учётную запись.
+  StaticUserFixture возвращает только свой заём и не выполняет SQL.
+
+4. Мишени не выполняются самостоятельно
+
+Для штатных Gradle-задач подтверждено запуском и чтением конфигурации.
+В rfr-e2e/build.gradle для всех задач типа Test заданы исключения:
+  exclude '**/UserExtensionTest$*.class'
+  exclude '**/UsersQueueExtensionTest$*.class'
+
+Listener сохранил все 47 внешних идентификаторов запуска:
+  nested_standalone=0
+
+Во внешнем плане не было самостоятельных тестов из вложенных классов
+UserExtensionTest и UsersQueueExtensionTest. Эти классы выполнялись
+внутри соответствующих проверок EngineTestKit.
+
+Ограничение: @ProbeTarget не объявлена и не используется в текущих
+исходниках. Изоляция основана на именах классов и Gradle-исключениях.
+Защиты через аннотацию и запрета прямого запуска вложенного класса
+из IDE сейчас нет. Прямой запуск через IDE отдельно не проверялся.
+
+5. UserExtensionTest проходит без браузера
+
+Подтверждено отдельным запуском только UserExtensionTest:
+  19 тестов, 0 отказов, 0 ошибок, 0 пропусков; Gradle — 2 секунды.
+
+Listener внутри forked JVM PID 57845 подтвердил переменные окружения:
+  PLAYWRIGHT_BROWSERS_PATH=/private/tmp/rfr-resource-audit-ud5texxj/empty-browsers
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+Указанный каталог был создан пустым и после запуска содержал 0 элементов.
+В UserExtensionTest нет Page, Browser, Playwright или @UsePlaywright.
+Прогону нужен MySQL: одна из мишеней проверяет реальную связь и профиль.
+
+Ограничение: системный мониторинг всех процессов браузера не выполнялся.
+Подтверждены успешный запуск с пустым путём браузеров, отключённой
+загрузкой браузеров и отсутствие браузерного кода в проверяемом классе.
+
+АРТЕФАКТЫ
+
+Полный HTML-отчёт:
+  rfr-e2e/build/reports/tests/e2e/index.html
+HTML-отчёт отдельного UserExtensionTest:
+  rfr-e2e/build/reports/tests/test/index.html
+
+Временные доказательства:
+  /private/tmp/rfr-resource-audit-ud5texxj/full-audit.txt
+  /private/tmp/rfr-resource-audit-ud5texxj/browserless-audit.txt
+  /private/tmp/rfr-resource-audit-ud5texxj/full-xml-summary.json
+  /private/tmp/rfr-resource-audit-ud5texxj/browserless-xml-summary.json
+  /private/tmp/rfr-resource-audit-ud5texxj/friendship-audit.txt
+  /private/tmp/rfr-resource-audit-ud5texxj/ResourceAuditListener.java
+  /private/tmp/rfr-resource-audit-ud5texxj/init.gradle
+  /private/tmp/rfr-resource-audit-ud5texxj/browserless.gradle
+
+Команды проведённых запусков:
+  ./gradlew :rfr-e2e:e2e --init-script /private/tmp/rfr-resource-audit-ud5texxj/init.gradle
+  ./gradlew :rfr-e2e:test --tests '*UserExtensionTest' --init-script /private/tmp/rfr-resource-audit-ud5texxj/browserless.gradle
+
+Временные файлы могут быть очищены системой; HTML-отчёты и XML проекта
+обновляются при следующих запусках. Числа и выводы выше зафиксированы
+для описанных прогонов. Форматирование исходников не проверялось.

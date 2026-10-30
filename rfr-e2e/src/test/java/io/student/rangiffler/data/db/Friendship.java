@@ -5,28 +5,35 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 public final class Friendship {
     private final String requester;
     private final String addressee;
+    private final FriendshipStatus status;
     private final JdbcClient api;
 
     public Friendship(String requester, String addressee) {
+        this(requester, addressee, FriendshipStatus.ACCEPTED);
+    }
+
+    public Friendship(String requester, String addressee, FriendshipStatus status) {
         this.requester = requester;
         this.addressee = addressee;
+        this.status = status;
         this.api = Jdbc.client(Databases.API);
     }
 
     public void create() {
         if (api.sql(Jdbc.sql("api/create-friendship.sql"))
-                .param("requester", requester).param("addressee", addressee).update() != 1) {
+                .param("requester", requester).param("addressee", addressee).param("status", status.name()).update() != 1) {
             throw new IllegalStateException("Expected one inserted friendship between " + requester + " and " + addressee);
         }
     }
 
     public void delete() {
         api.sql(Jdbc.sql("api/delete-friendship.sql"))
-                .param("requester", requester).param("addressee", addressee).update();
+                .param("requester", requester).param("addressee", addressee).param("status", status.name()).update();
     }
 
     public boolean exist() {
         return api.sql(Jdbc.sql("api/exist-friendship.sql"))
-                .param("requester", requester).param("addressee", addressee).query(Boolean.class).single();
+                .param("requester", requester).param("addressee", addressee).param("status", status.name())
+                .query(Boolean.class).single();
     }
 }

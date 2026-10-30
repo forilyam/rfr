@@ -51,9 +51,17 @@ allure {
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
     exclude '**/UserExtensionTest$*.class'
+    exclude '**/UsersQueueExtensionTest$*.class'
     outputs.upToDateWhen { false }
     systemProperties System.getProperties().findAll { key, value -> key.toString().startsWith('rfr.') }
     jvmArgumentProviders.add({ ["-javaagent:${configurations.agent.singleFile}"] } as CommandLineArgumentProvider)
+}
+
+tasks.register('e2e', Test) {
+    group = 'verification'
+    description = 'Runs all tests in the rfr-e2e module'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
 }
 
 tasks.register('installPlaywright', JavaExec) {
