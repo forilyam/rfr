@@ -3,7 +3,7 @@ package io.student.rangiffler.test.auth;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.junit.UsePlaywright;
 import io.student.rangiffler.data.TestUser;
-import io.student.rangiffler.data.UserFixture;
+import io.student.rangiffler.data.SingleUserFixture;
 import io.student.rangiffler.ui.page.LandingPage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,7 +16,7 @@ class RegistrationTest {
 
     @AfterEach
     void deleteRegisteredUser() {
-        new UserFixture(user).close();
+        new SingleUserFixture(user).close();
     }
 
     @Test

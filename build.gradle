@@ -16,7 +16,7 @@ tasks.register('runAll') {
 tasks.register('e2e') {
     group = 'verification'
     description = 'Runs all tests in the rfr-e2e module'
-    dependsOn ':rfr-e2e:test'
+    dependsOn ':rfr-e2e:e2e'
 }
 
 
