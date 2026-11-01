@@ -38,6 +38,7 @@ dependencies {
     testRuntimeOnly "com.mysql:mysql-connector-j"
 
     testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation "org.junit.platform:junit-platform-suite"
     testImplementation "org.junit.platform:junit-platform-testkit"
     testImplementation "org.hamcrest:hamcrest:3.0"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
@@ -65,6 +66,9 @@ tasks.register('e2e', Test) {
     description = 'Runs all tests in the rfr-e2e module'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeEngines 'junit-platform-suite'
+    }
 }
 
 tasks.register('installPlaywright', JavaExec) {
