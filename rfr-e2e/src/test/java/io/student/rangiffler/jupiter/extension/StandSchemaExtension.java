@@ -1,4 +1,4 @@
-package io.student.rangiffler.test;
+package io.student.rangiffler.jupiter.extension;
 
 import io.student.rangiffler.config.TestConfig;
 import io.student.rangiffler.data.db.Databases;
@@ -6,17 +6,12 @@ import io.student.rangiffler.data.db.Migrations;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
-import org.junit.platform.suite.api.BeforeSuite;
-import org.junit.platform.suite.api.IncludeEngines;
-import org.junit.platform.suite.api.SelectPackages;
-import org.junit.platform.suite.api.Suite;
 
-@Suite
-@SelectPackages("io.student.rangiffler")
-@IncludeEngines("junit-jupiter")
-public final class RangifflerSuite {
-    @BeforeSuite
-    static void checkMigrations() {
+import org.junit.jupiter.api.extension.ExtensionContext;
+
+public final class StandSchemaExtension implements SuiteExtension {
+    @Override
+    public void beforeSuite(ExtensionContext context) {
         if (TestConfig.migrationCheck()) {
             List<String> mismatches = Stream.of(
                             new Migrations(Databases.AUTH, TestConfig.authMigrations()),
