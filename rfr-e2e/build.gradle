@@ -11,6 +11,10 @@ def aspectJVersion = '1.9.25.1'
 def flywayVersion = rootProject.project(':rfr-api').flywayVersion
 def junitVersion = '6.1.3'
 def playwrightVersion = '1.63.0'
+def commit = providers.exec {
+    workingDir rootProject.projectDir
+    commandLine 'git', 'rev-parse', '--short', 'HEAD'
+}.standardOutput.asText.map { it.trim() }
 
 configurations {
     agent {
@@ -35,6 +39,7 @@ dependencies {
     testImplementation "org.flywaydb:flyway-core:$flywayVersion"
     testRuntimeOnly "org.flywaydb:flyway-mysql:$flywayVersion"
     testImplementation "com.zaxxer:HikariCP"
+    testImplementation "org.apache.httpcomponents.client5:httpclient5"
     testRuntimeOnly "com.mysql:mysql-connector-j"
 
     testImplementation "org.junit.jupiter:junit-jupiter"
@@ -48,15 +53,25 @@ allure {
     version = allureReportVersion
     adapter {
         autoconfigure.set(false)
+        resultsDir.set(layout.dir(providers.systemProperty('allure.results.directory').map { file(it) })
+                .orElse(layout.buildDirectory.dir('allure-results')))
     }
 }
 
 tasks.withType(Test).configureEach {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'probe-target'
+    }
     exclude '**/UserExtensionTest$*.class'
     exclude '**/UsersQueueExtensionTest$*.class'
     outputs.upToDateWhen { false }
-    systemProperties System.getProperties().findAll { key, value -> key.toString().startsWith('rfr.') }
+    System.properties.stringPropertyNames().findAll { it.startsWith('rfr.') }.each { key ->
+        systemProperty key, System.getProperty(key)
+    }
+    doFirst {
+        systemProperty 'rfr.commit', commit.get()
+        systemProperty 'rfr.testClasspath', classpath.asPath
+    }
     jvmArgumentProviders.add({ ["-javaagent:${configurations.agent.singleFile}"] } as CommandLineArgumentProvider)
 }
 

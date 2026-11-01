@@ -6,10 +6,12 @@ import io.student.rangiffler.data.TestUser;
 import io.student.rangiffler.jupiter.annotation.User;
 import io.student.rangiffler.ui.page.LandingPage;
 import io.student.rangiffler.ui.page.PeoplePage;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+@Tag("ui")
 @UsePlaywright
 @Timeout(90)
 @DisplayName("Вкладка Income invitations")
