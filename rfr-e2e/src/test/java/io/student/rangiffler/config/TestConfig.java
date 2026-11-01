@@ -30,6 +30,18 @@ public final class TestConfig {
     return value("dbPassword", "secret");
   }
 
+  public static boolean migrationCheck() {
+    return Boolean.parseBoolean(value("migrationCheck", "false"));
+  }
+
+  public static String authMigrations() {
+    return value("authMigrations", "../rfr-auth/src/main/resources/db/migration/rangiffler-auth");
+  }
+
+  public static String apiMigrations() {
+    return value("apiMigrations", "../rfr-api/src/main/resources/db/migration/rangiffler-api");
+  }
+
   public static String browser() {
     return value("browser", "chromium");
   }

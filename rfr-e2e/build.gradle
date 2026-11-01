@@ -8,6 +8,7 @@ version = '1.0.0'
 def allureJavaVersion = '3.0.0'
 def allureReportVersion = '3.17.0'
 def aspectJVersion = '1.9.25.1'
+def flywayVersion = rootProject.project(':rfr-api').flywayVersion
 def junitVersion = '6.1.3'
 def playwrightVersion = '1.63.0'
 
@@ -31,6 +32,8 @@ dependencies {
 
     testImplementation "org.springframework:spring-jdbc"
     testImplementation "org.springframework.security:spring-security-crypto"
+    testImplementation "org.flywaydb:flyway-core:$flywayVersion"
+    testRuntimeOnly "org.flywaydb:flyway-mysql:$flywayVersion"
     testImplementation "com.zaxxer:HikariCP"
     testRuntimeOnly "com.mysql:mysql-connector-j"
 
