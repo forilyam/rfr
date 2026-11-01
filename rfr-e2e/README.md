@@ -7,6 +7,7 @@ E2E-тесты Rangiffler: JUnit 6.1.3, Playwright Java 1.63 (`@UsePlaywright`),
 ```bash
 ./gradlew :rfr-e2e:installPlaywright # подготовка Chromium перед первым прогоном
 ./gradlew e2e                       # все тесты модуля
+./gradlew :rfr-e2e:e2e --tests '*TabTest'
 ./gradlew :rfr-e2e:test --tests '*RegistrationTest'
 ./gradlew :rfr-e2e:test --tests '*MainPageTest'
 ./gradlew :rfr-e2e:test --tests '*LoginNegativeTest'
@@ -16,8 +17,8 @@ E2E-тесты Rangiffler: JUnit 6.1.3, Playwright Java 1.63 (`@UsePlaywright`),
 
 Стенд: MySQL `:3306`, `rfr-auth :9001`, `rfr-api :8081`, фронт `:3001` (см. корневой README).
 Команды выполняются из корня проекта; тесты сами стенд не поднимают.
-Задача `e2e` вызывает `:rfr-e2e:test`. Тесты выполняются при каждом запуске: для задачи настроено `outputs.upToDateWhen { false }`.
-HTML-отчёт Gradle — `rfr-e2e/build/reports/tests/test/index.html`.
+Корневая задача `e2e` вызывает `:rfr-e2e:e2e`; задача модуля поддерживает фильтр `--tests` и использует те же классы и настройки, что `:rfr-e2e:test`. Тесты выполняются при каждом запуске: для задач настроено `outputs.upToDateWhen { false }`.
+HTML-отчёт `e2e` — `rfr-e2e/build/reports/tests/e2e/index.html`, отчёт `test` — `rfr-e2e/build/reports/tests/test/index.html`.
 
 ## Конфигурация
 
