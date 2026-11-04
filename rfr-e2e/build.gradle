@@ -59,6 +59,7 @@ allure {
 }
 
 tasks.withType(Test).configureEach {
+    environment 'PLAYWRIGHT_JAVA_SRC', sourceSets.test.java.srcDirs.collect { it.absolutePath }.join(File.pathSeparator)
     useJUnitPlatform {
         excludeTags 'probe-target'
     }
@@ -86,6 +87,22 @@ tasks.register('installPlaywright', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.microsoft.playwright.CLI'
     args 'install', 'chromium'
+}
+
+tasks.register('showTrace', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.microsoft.playwright.CLI'
+    doFirst {
+        def trace = providers.gradleProperty('trace').orElse('').get()
+        if (trace.isBlank()) {
+            throw new GradleException('Specify the trace archive with -Ptrace=/path/to/trace.zip')
+        }
+        def archive = rootProject.file(trace)
+        if (!archive.isFile()) {
+            throw new GradleException("Trace archive does not exist: ${archive}")
+        }
+        args 'show-trace', archive.absolutePath
+    }
 }
 
 tasks.register('installPlaywrightWithDeps', JavaExec) {

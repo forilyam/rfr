@@ -76,12 +76,32 @@ public final class TestConfig {
         return Boolean.parseBoolean(value("headless", "true"));
     }
 
+    public static Duration actionTimeout() {
+        return Duration.ofSeconds(Long.parseLong(value("actionTimeout", "5")));
+    }
+
+    public static Duration navigationTimeout() {
+        return Duration.ofSeconds(Long.parseLong(value("navigationTimeout", "30")));
+    }
+
+    public static int viewportWidth() {
+        return Integer.parseInt(value("viewportWidth", "1920"));
+    }
+
+    public static int viewportHeight() {
+        return Integer.parseInt(value("viewportHeight", "1080"));
+    }
+
     public static String commit() {
         return value("commit", "unknown");
     }
 
     public static Path allureResults() {
         return Path.of(System.getProperty("allure.results.directory", "rfr-e2e/build/allure-results"));
+    }
+
+    public static Path traces() {
+        return Path.of(value("traces", "build/traces"));
     }
 
     public static String testClasspath() {

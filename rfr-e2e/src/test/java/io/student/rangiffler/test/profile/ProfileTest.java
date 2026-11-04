@@ -1,9 +1,9 @@
 package io.student.rangiffler.test.profile;
 
 import com.microsoft.playwright.Page;
-import com.microsoft.playwright.junit.UsePlaywright;
 import com.microsoft.playwright.options.FilePayload;
 import io.student.rangiffler.data.TestUser;
+import io.student.rangiffler.jupiter.annotation.UiTest;
 import io.student.rangiffler.jupiter.annotation.User;
 import io.student.rangiffler.ui.page.LandingPage;
 
@@ -13,12 +13,10 @@ import java.io.IOException;
 import java.util.Base64;
 import javax.imageio.ImageIO;
 
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-@Tag("ui")
-@UsePlaywright
+@UiTest
 @DisplayName("Профиль пользователя")
 class ProfileTest {
     @Test
