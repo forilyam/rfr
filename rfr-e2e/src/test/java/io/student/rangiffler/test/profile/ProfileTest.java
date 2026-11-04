@@ -13,9 +13,11 @@ import java.io.IOException;
 import java.util.Base64;
 import javax.imageio.ImageIO;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+@Tag("ui")
 @UsePlaywright
 @DisplayName("Профиль пользователя")
 class ProfileTest {
