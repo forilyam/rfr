@@ -1,6 +1,7 @@
 package io.student.rangiffler.ui.component;
 
 import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
 import io.qameta.allure.Step;
 
@@ -25,8 +26,8 @@ public final class PhotoCard {
 
     @Step("Поставить лайк фотографии")
     public PhotoCard clickLike() {
-        card.getByRole(AriaRole.BUTTON,
-                new Locator.GetByRoleOptions().setName("like").setExact(true)).click();
+        card.page().getByRole(AriaRole.BUTTON,
+                new Page.GetByRoleOptions().setName("like").setExact(true)).click();
         return this;
     }
 
