@@ -1,7 +1,5 @@
 package io.student.rangiffler.config;
 
-import com.microsoft.playwright.options.ViewportSize;
-
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.file.Path;
@@ -86,11 +84,12 @@ public final class TestConfig {
         return Duration.ofSeconds(Long.parseLong(value("navigationTimeout", "30")));
     }
 
-    public static ViewportSize viewportSize() {
-        return new ViewportSize(
-                Integer.parseInt(value("viewportWidth", "1920")),
-                Integer.parseInt(value("viewportHeight", "1080"))
-        );
+    public static int viewportWidth() {
+        return Integer.parseInt(value("viewportWidth", "1920"));
+    }
+
+    public static int viewportHeight() {
+        return Integer.parseInt(value("viewportHeight", "1080"));
     }
 
     public static String commit() {

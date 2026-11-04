@@ -16,6 +16,6 @@ public final class BrowserOptions implements OptionsFactory {
 
     private Browser.NewContextOptions contextOptions() {
         return new Browser.NewContextOptions()
-                .setViewportSize(TestConfig.viewportSize());
+                .setViewportSize(TestConfig.viewportWidth(), TestConfig.viewportHeight());
     }
 }
