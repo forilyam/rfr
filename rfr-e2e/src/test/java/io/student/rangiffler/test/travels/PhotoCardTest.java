@@ -36,7 +36,7 @@ final class PhotoCardTest {
     @Test
     @DisplayName("Лайк относится к выбранной карточке среди нескольких фотографий")
     void likeDoesntTargetAnotherPhoto(Page page, @User TestUser user) {
-        login(page, user).clickWithFriends().photo("Амстердам!").clickLike().checkLikes(1);
+        login(page, user).clickWithFriends().checkPhotoCount(7).photo("Амстердам!").clickLike().checkLikes(1);
     }
 
     @Test
