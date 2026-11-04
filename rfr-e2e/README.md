@@ -40,6 +40,7 @@ Gradle передаёт все `-Drfr.*` в тестовую JVM.
 | `rfr.dbTimeout` | `RFR_DB_TIMEOUT` | `5` (положительное число секунд; получение и проверка соединения, подключение и чтение JDBC) |
 | `rfr.browser` | `RFR_BROWSER` | `chromium` |
 | `rfr.headless` | `RFR_HEADLESS` | `true` |
+| `rfr.traces` | `RFR_TRACES` | `build/traces` относительно рабочего каталога тестовой JVM |
 | `rfr.standCheck` | `RFR_STAND_CHECK` | `true` |
 | `rfr.standTimeout` | `RFR_STAND_TIMEOUT` | `180` (положительное число секунд) |
 | `rfr.commit` | `RFR_COMMIT` | Gradle передаёт результат `git rev-parse --short HEAD`; вне Gradle — `unknown` |
@@ -55,6 +56,14 @@ Gradle передаёт все `-Drfr.*` в тестовую JVM.
 Мишень с настоящим `AllureEnvironmentExtension` запускается в отдельной JVM и проверяет все восемь рабочих ключей. Проба зависшего SQL использует TCP-сервер на эфемерном порту: он завершает рукопожатие MySQL и не отвечает на запрос. При `rfr.dbTimeout=1` расширение должно завершить чтение обеих схем и записать `unavailable`; дочерняя JVM, соединения и задачи сервера принадлежат пробе и освобождаются при её завершении.
 
 Для просмотра отчёта из корня проекта выполни `./gradlew allureServe`.
+
+## Трассировка UI-тестов
+
+`@UiTest` подключает `BrowserTracingExtension`: запись screenshots, snapshots и sources начинается до `@BeforeEach` и завершается после `@AfterEach`. Только при падении сохраняется `trace.zip` в отдельном каталоге запуска под `rfr-e2e/build/traces` и прикладывается к Allure как `application/zip`. Успешные и прерванные тесты архив не сохраняют. Контекстом браузера продолжает владеть `@UsePlaywright`.
+
+Для просмотра из корня проекта выполни `./gradlew :rfr-e2e:showTrace -Ptrace=rfr-e2e/build/traces/<каталог>/trace.zip`. Путь может быть абсолютным или относительным к корню проекта. Задача открывает архив через Playwright Trace Viewer.
+
+Gradle задаёт `PLAYWRIGHT_JAVA_SRC` с каталогами тестовых Java-исходников, чтобы они попадали в архив. При прямом запуске из IDE эту переменную нужно задать в конфигурации запуска: абсолютный путь к `rfr-e2e/src/test/java`.
 
 ## Архитектура
 

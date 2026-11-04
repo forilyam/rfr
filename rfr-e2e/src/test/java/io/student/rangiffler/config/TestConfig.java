@@ -100,6 +100,10 @@ public final class TestConfig {
         return Path.of(System.getProperty("allure.results.directory", "rfr-e2e/build/allure-results"));
     }
 
+    public static Path traces() {
+        return Path.of(value("traces", "build/traces"));
+    }
+
     public static String testClasspath() {
         return value("testClasspath", System.getProperty("java.class.path"));
     }
