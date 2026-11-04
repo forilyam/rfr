@@ -1,17 +1,15 @@
 package io.student.rangiffler.test.auth;
 
 import com.microsoft.playwright.Page;
-import com.microsoft.playwright.junit.UsePlaywright;
+import io.student.rangiffler.jupiter.annotation.UiTest;
 import io.student.rangiffler.data.TestUser;
 import io.student.rangiffler.data.SingleUserFixture;
 import io.student.rangiffler.ui.page.LandingPage;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-@Tag("ui")
-@UsePlaywright
+@UiTest
 @DisplayName("Регистрация через UI")
 class RegistrationTest {
     private final TestUser user = TestUser.unique();
