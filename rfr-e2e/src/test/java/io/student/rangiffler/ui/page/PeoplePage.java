@@ -54,7 +54,7 @@ public final class PeoplePage {
 
     @Step("Открыть исходящие приглашения")
     public PeoplePage clickOutcomeInvitations() {
-        clickTab("Outcome invitations [trace probe]", "GetOutcomeInvitations");
+        clickTab("Outcome invitations", "GetOutcomeInvitations");
         return this;
     }
 
