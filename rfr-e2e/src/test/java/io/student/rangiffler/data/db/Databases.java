@@ -25,10 +25,15 @@ public enum Databases {
   public synchronized DataSource dataSource() {
     if (dataSource == null) {
       HikariDataSource created = new HikariDataSource();
+      long timeout = TestConfig.dbTimeout().toMillis();
       created.setJdbcUrl(TestConfig.dbUrl(schema));
       created.setUsername(TestConfig.dbUser());
       created.setPassword(TestConfig.dbPassword());
       created.setMaximumPoolSize(4);
+      created.setConnectionTimeout(timeout);
+      created.setValidationTimeout(timeout);
+      created.addDataSourceProperty("connectTimeout", Long.toString(timeout));
+      created.addDataSourceProperty("socketTimeout", Long.toString(timeout));
       created.setPoolName("rfr-e2e-" + schema);
       dataSource = created;
     }
