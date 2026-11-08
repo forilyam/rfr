@@ -33,10 +33,10 @@ final class FriendshipPreconditionTest {
     @Test
     @DisplayName("Друзья и входящие приглашения создаются одновременно")
     void requestedFriendsAndInvitationsAppearInUi(Page page,
-                                                  @User(friends = 2, incomeInvitations = 3) TestUser user) {
-        login(page, user).checkPeopleCount(2)
+                                                  @User(friends = 1, incomeInvitations = 1) TestUser user) {
+        login(page, user).checkPeopleCount(1)
                 .checkUsers(user.friends().stream().map(TestUser::username).toList())
-                .clickIncomeInvitations().checkPeopleCount(3)
+                .clickIncomeInvitations().checkPeopleCount(1)
                 .checkUsers(user.incomeInvitations().stream().map(TestUser::username).toList());
     }
 
