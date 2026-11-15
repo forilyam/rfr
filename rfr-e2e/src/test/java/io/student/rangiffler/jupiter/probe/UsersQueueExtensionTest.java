@@ -1,7 +1,9 @@
 package io.student.rangiffler.jupiter.probe;
 
 import io.student.rangiffler.data.TestUser;
+import io.student.rangiffler.jupiter.annotation.ProbeTarget;
 import io.student.rangiffler.jupiter.annotation.StaticUser;
+import io.student.rangiffler.jupiter.extension.ProbeTargetCondition;
 
 import java.util.List;
 import java.util.Map;
@@ -35,6 +37,7 @@ final class UsersQueueExtensionTest {
     void fourSequentialTestsCanUseThreeStaticUsers() {
         EngineExecutionResults execution = EngineTestKit.engine("junit-jupiter")
                 .selectors(selectClass(SequentialCases.class))
+                .configurationParameter(ProbeTargetCondition.PARAMETER, "true")
                 .configurationParameter("junit.jupiter.execution.timeout.default", "7s").execute();
         assertThat("Four sequential tests exhaust the pool or dont reuse its three users", List.of(
                         outcome(execution), users(execution, "body").size(),
@@ -46,6 +49,7 @@ final class UsersQueueExtensionTest {
     void failedTestDoesntKeepItsStaticUser() {
         EngineExecutionResults execution = EngineTestKit.engine("junit-jupiter")
                 .selectors(selectClass(FailureCases.class))
+                .configurationParameter(ProbeTargetCondition.PARAMETER, "true")
                 .configurationParameter("junit.jupiter.execution.timeout.default", "7s").execute();
         assertThat("A failed test keeps its user or the next test cannot borrow the full pool", List.of(
                         outcome(execution), failures(execution), users(execution, "failed").size(),
@@ -58,6 +62,7 @@ final class UsersQueueExtensionTest {
     void concurrentTestsCannotShareStaticUsers() {
         EngineExecutionResults execution = EngineTestKit.engine("junit-jupiter")
                 .selectors(selectClass(ConcurrentCases.class))
+                .configurationParameter(ProbeTargetCondition.PARAMETER, "true")
                 .configurationParameter("junit.jupiter.execution.parallel.enabled", "true")
                 .configurationParameter("junit.jupiter.execution.parallel.mode.default", "concurrent")
                 .configurationParameter("junit.jupiter.execution.parallel.config.strategy", "fixed")
@@ -73,6 +78,7 @@ final class UsersQueueExtensionTest {
     void exhaustedPoolTimesOutAndDoesntLoseBorrowedUsers() {
         EngineExecutionResults execution = EngineTestKit.engine("junit-jupiter")
                 .selectors(selectClass(ExhaustionCases.class))
+                .configurationParameter(ProbeTargetCondition.PARAMETER, "true")
                 .configurationParameter("junit.jupiter.execution.timeout.default", "7s").execute();
         assertThat("Pool exhaustion hangs, loses users or returns an unborrowed user", List.of(
                         outcome(execution), failures(execution).stream().anyMatch(message ->
@@ -97,6 +103,7 @@ final class UsersQueueExtensionTest {
                 .getThrowable().orElseThrow().getMessage()).toList();
     }
 
+    @ProbeTarget
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     static final class SequentialCases {
         @Test
@@ -124,6 +131,7 @@ final class UsersQueueExtensionTest {
         }
     }
 
+    @ProbeTarget
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     static final class FailureCases {
         @Test
@@ -143,6 +151,7 @@ final class UsersQueueExtensionTest {
         }
     }
 
+    @ProbeTarget
     @ExtendWith(ParallelBarrier.class)
     static final class ConcurrentCases {
         @Test
@@ -170,6 +179,7 @@ final class UsersQueueExtensionTest {
         }
     }
 
+    @ProbeTarget
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     static final class ExhaustionCases {
         @Test

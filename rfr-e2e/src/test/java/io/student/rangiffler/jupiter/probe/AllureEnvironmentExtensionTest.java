@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 
 import io.student.rangiffler.jupiter.annotation.ProbeTarget;
+import io.student.rangiffler.jupiter.extension.ProbeTargetCondition;
 import io.student.rangiffler.config.TestConfig;
 import io.student.rangiffler.jupiter.extension.AllureEnvironmentExtension;
 import io.student.rangiffler.jupiter.extension.SuiteExtension;
@@ -107,6 +108,7 @@ final class AllureEnvironmentExtensionTest {
 
     private EngineExecutionResults execute(Path directory, Class<?> target) {
         return EngineTestKit.engine("junit-jupiter").selectors(selectClass(target))
+                .configurationParameter(ProbeTargetCondition.PARAMETER, "true")
                 .configurationParameter("junit.jupiter.extensions.autodetection.enabled", "false")
                 .configurationParameter("junit.jupiter.execution.parallel.enabled", "false")
                 .configurationParameter("probe.results", directory.toString())
@@ -159,6 +161,7 @@ final class AllureEnvironmentExtensionTest {
     static final class RealEnvironmentTest {
         static void main() {
             EngineTestKit.engine("junit-jupiter").selectors(selectClass(RealEnvironmentTest.class))
+                    .configurationParameter(ProbeTargetCondition.PARAMETER, "true")
                     .configurationParameter("junit.jupiter.extensions.autodetection.enabled", "false")
                     .execute().testEvents().assertStatistics(statistics -> statistics.succeeded(1));
         }

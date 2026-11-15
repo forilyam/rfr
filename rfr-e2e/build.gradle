@@ -62,8 +62,6 @@ tasks.withType(Test).configureEach {
     useJUnitPlatform {
         excludeTags 'probe-target'
     }
-    exclude '**/UserExtensionTest$*.class'
-    exclude '**/UsersQueueExtensionTest$*.class'
     outputs.upToDateWhen { false }
     System.properties.stringPropertyNames().findAll { it.startsWith('rfr.') }.each { key ->
         systemProperty key, System.getProperty(key)

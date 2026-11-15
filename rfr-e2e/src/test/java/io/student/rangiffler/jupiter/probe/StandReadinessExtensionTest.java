@@ -6,6 +6,7 @@ import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass
 
 import com.sun.net.httpserver.HttpServer;
 import io.student.rangiffler.jupiter.annotation.ProbeTarget;
+import io.student.rangiffler.jupiter.extension.ProbeTargetCondition;
 import io.student.rangiffler.jupiter.extension.StandReadinessExtension;
 import io.student.rangiffler.stand.HttpReadiness;
 
@@ -157,6 +158,7 @@ final class StandReadinessExtensionTest {
             HttpServer server, boolean check, Duration timeout, DiscoverySelector... selectors
     ) {
         return EngineTestKit.engine("junit-jupiter").selectors(selectors)
+                .configurationParameter(ProbeTargetCondition.PARAMETER, "true")
                 .configurationParameter("junit.jupiter.extensions.autodetection.enabled", "false")
                 .configurationParameter("junit.jupiter.execution.parallel.enabled", "false")
                 .configurationParameter("junit.jupiter.testclass.order.default", "org.junit.jupiter.api.ClassOrderer$OrderAnnotation")
