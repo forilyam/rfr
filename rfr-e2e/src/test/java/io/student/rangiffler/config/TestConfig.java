@@ -45,7 +45,7 @@ public final class TestConfig {
     }
 
     public static Duration standTimeout() {
-        return Duration.ofSeconds(Long.parseLong(value("standTimeout", "18")));
+        return Duration.ofSeconds(Long.parseLong(value("standTimeout", "180")));
     }
 
     public static String dbUser() {

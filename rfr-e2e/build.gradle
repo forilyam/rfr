@@ -73,6 +73,12 @@ tasks.withType(Test).configureEach {
     jvmArgumentProviders.add({ ["-javaagent:${configurations.agent.singleFile}"] } as CommandLineArgumentProvider)
 }
 
+tasks.named('test', Test) {
+    useJUnitPlatform {
+        excludeTags 'ui'
+    }
+}
+
 tasks.register('e2e', Test) {
     group = 'verification'
     description = 'Runs all tests in the rfr-e2e module'

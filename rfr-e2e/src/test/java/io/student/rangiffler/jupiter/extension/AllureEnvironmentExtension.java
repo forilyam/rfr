@@ -40,6 +40,11 @@ public final class AllureEnvironmentExtension implements SuiteExtension {
     }
 
     @Override
+    public boolean supports(ExtensionContext context) {
+        return context.getTags().contains("ui");
+    }
+
+    @Override
     public void afterSuite(ExtensionContext context) {
         Properties properties = new Properties();
         properties.putAll(environment.get());

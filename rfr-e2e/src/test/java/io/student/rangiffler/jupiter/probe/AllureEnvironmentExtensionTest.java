@@ -30,8 +30,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.jspecify.annotations.NullMarked;
-import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestReporter;
 import org.junit.jupiter.api.Timeout;
@@ -41,10 +42,28 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.platform.testkit.engine.EngineExecutionResults;
 import org.junit.platform.testkit.engine.EngineTestKit;
+import org.junit.platform.engine.discovery.DiscoverySelectors;
 
 @NullMarked
 @Timeout(20)
 final class AllureEnvironmentExtensionTest {
+    @Test
+    void suiteWithoutUiCannotRequestEnvironment(@TempDir(cleanup = org.junit.jupiter.api.io.CleanupMode.NEVER) Path directory) {
+        EngineExecutionResults execution = execute(directory, BeforeUiTest.class);
+        assertThat("A suite without UI requests environment values or writes environment.properties",
+                List.of(execution.testEvents().succeeded().count(), execution.containerEvents().failed().count(),
+                        Files.exists(directory.resolve("environment.properties"))),
+                is(List.of(1L, 0L, false)));
+    }
+
+    @Test
+    void untaggedClassCannotPreventEnvironmentForLaterUiClass(@TempDir(cleanup = org.junit.jupiter.api.io.CleanupMode.NEVER) Path directory) throws Exception {
+        EngineExecutionResults execution = execute(directory, BeforeUiTest.class, CompletedTest.class);
+        assertThat("An earlier untagged class prevents environment values from the later UI class",
+                List.of(execution.testEvents().succeeded().count(), properties(directory)),
+                is(List.of(2L, environment())));
+    }
+
     @Test
     void completedSuiteCannotOmitAnyEnvironmentKey(@TempDir(cleanup = org.junit.jupiter.api.io.CleanupMode.NEVER) Path directory) throws Exception {
         int port;
@@ -106,11 +125,12 @@ final class AllureEnvironmentExtensionTest {
                 is(List.of(1L, false)));
     }
 
-    private EngineExecutionResults execute(Path directory, Class<?> target) {
-        return EngineTestKit.engine("junit-jupiter").selectors(selectClass(target))
+    private EngineExecutionResults execute(Path directory, Class<?>... targets) {
+        return EngineTestKit.engine("junit-jupiter").selectors(Stream.of(targets).map(DiscoverySelectors::selectClass).toList())
                 .configurationParameter(ProbeTargetCondition.PARAMETER, "true")
                 .configurationParameter("junit.jupiter.extensions.autodetection.enabled", "false")
                 .configurationParameter("junit.jupiter.execution.parallel.enabled", "false")
+                .configurationParameter("junit.jupiter.testclass.order.default", "org.junit.jupiter.api.ClassOrderer$ClassName")
                 .configurationParameter("probe.results", directory.toString())
                 .execute();
     }
@@ -157,6 +177,7 @@ final class AllureEnvironmentExtensionTest {
     }
 
     @ProbeTarget
+    @Tag("ui")
     @ExtendWith(AllureEnvironmentExtension.class)
     static final class RealEnvironmentTest {
         static void main() {
@@ -173,6 +194,16 @@ final class AllureEnvironmentExtensionTest {
     }
 
     @ProbeTarget
+    @ExtendWith(UnsupportedEnvironment.class)
+    static final class BeforeUiTest {
+        @Test
+        void scenario(TestReporter reporter) {
+            reporter.publishEntry("phase", "body");
+        }
+    }
+
+    @ProbeTarget
+    @Tag("ui")
     @ExtendWith(Environment.class)
     static final class CompletedTest {
         @Test
@@ -182,6 +213,7 @@ final class AllureEnvironmentExtensionTest {
     }
 
     @ProbeTarget
+    @Tag("ui")
     @ExtendWith({Environment.class, Failure.class})
     static final class FailedTest {
         @Test
@@ -196,6 +228,18 @@ final class AllureEnvironmentExtensionTest {
         @Test
         void scenario(TestReporter reporter) {
             reporter.publishEntry("phase", "body");
+        }
+    }
+
+    static final class UnsupportedEnvironment implements BeforeAllCallback {
+        @Override
+        public void beforeAll(ExtensionContext context) {
+            new AllureEnvironmentExtension(
+                    Path.of(context.getConfigurationParameter("probe.results").orElseThrow()),
+                    () -> {
+                        throw new IllegalStateException("A suite without UI requested environment values");
+                    }
+            ).beforeAll(context);
         }
     }
 

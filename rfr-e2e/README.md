@@ -7,11 +7,12 @@ E2E-тесты Rangiffler: JUnit 6.1.3, Playwright Java 1.63 (`@UsePlaywright`),
 ```bash
 ./gradlew :rfr-e2e:installPlaywright # подготовка Chromium перед первым прогоном
 ./gradlew e2e                       # все тесты модуля
+./gradlew :rfr-e2e:test             # тесты без обращения к стенду
 ./gradlew :rfr-e2e:e2e --tests '*TabTest'
-./gradlew :rfr-e2e:test --tests '*RegistrationTest'
-./gradlew :rfr-e2e:test --tests '*MainPageTest'
-./gradlew :rfr-e2e:test --tests '*LoginNegativeTest'
-./gradlew :rfr-e2e:test --tests '*ProfileTest'
+./gradlew :rfr-e2e:e2e --tests '*RegistrationTest'
+./gradlew :rfr-e2e:e2e --tests '*MainPageTest'
+./gradlew :rfr-e2e:e2e --tests '*LoginNegativeTest'
+./gradlew :rfr-e2e:e2e --tests '*ProfileTest'
 ./gradlew :rfr-e2e:allureReport      # rfr-e2e/build/reports/allure-report/allureReport/index.html
 ```
 
@@ -21,7 +22,7 @@ E2E-тесты Rangiffler: JUnit 6.1.3, Playwright Java 1.63 (`@UsePlaywright`),
 Для изменения времени ожидания передай `-Drfr.standTimeout=240`, для отключения проверки — `-Drfr.standCheck=false`.
 Расширения зарегистрированы глобально через `META-INF/services/org.junit.jupiter.api.extension.Extension`: `AllureEnvironmentExtension`, `StandReadinessExtension`, `StandSchemaExtension`. Автообнаружение включено в `junit-platform.properties`, поэтому регистрация действует и при запуске UI-класса из IDE. В classpath-запуске [`ServiceLoader` сохраняет порядок строк внутри одного service-файла](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/ServiceLoader.html#load(java.lang.Class,java.lang.ClassLoader)); JUnit Jupiter 6.1.3 регистрирует обнаруженные расширения в этом порядке, а `BeforeAllCallback` вызывается в порядке регистрации. Поэтому проверка готовности завершается до сверки миграций; при её ошибке сверка не запускается. Эта гарантия опирается на совместную регистрацию расширений в одном файле.
 Задача `e2e` зависит только от тестовой задачи модуля и не запускает `waitForStand`: ожиданием управляет JUnit внутри тестовой JVM.
-Корневая задача `e2e` вызывает `:rfr-e2e:e2e`; задача модуля поддерживает фильтр `--tests` и использует те же классы и настройки, что `:rfr-e2e:test`. Тесты выполняются при каждом запуске: для задач настроено `outputs.upToDateWhen { false }`.
+Корневая задача `e2e` вызывает `:rfr-e2e:e2e`; задача модуля поддерживает фильтр `--tests` и выполняет все тесты, включая UI. Задача `:rfr-e2e:test` исключает тег `ui` и не требует стенда. Обе задачи исключают внутренние мишени с тегом `probe-target`. Тесты выполняются при каждом запуске: для задач настроено `outputs.upToDateWhen { false }`.
 HTML-отчёт `e2e` — `rfr-e2e/build/reports/tests/e2e/index.html`, отчёт `test` — `rfr-e2e/build/reports/tests/test/index.html`.
 
 ## Конфигурация
@@ -46,7 +47,7 @@ Gradle передаёт все `-Drfr.*` в тестовую JVM.
 
 ## Окружение в Allure
 
-`AllureEnvironmentExtension.afterSuite()` записывает `environment.properties` в каталог из системного свойства `allure.results.directory`. По умолчанию Gradle использует `rfr-e2e/build/allure-results`; при прямом запуске JUnit из корня проекта используется тот же относительный путь. Переопределение `-Dallure.results.directory=<каталог>` поддерживает и Gradle.
+`AllureEnvironmentExtension` активируется только для классов с тегом `ui`. После UI-прогона `afterSuite()` записывает `environment.properties` в каталог из системного свойства `allure.results.directory`. Прогон без UI не запрашивает версии из БД и не записывает файл. По умолчанию Gradle использует `rfr-e2e/build/allure-results`; при прямом запуске JUnit из корня проекта используется тот же относительный путь. Переопределение `-Dallure.results.directory=<каталог>` поддерживает и Gradle.
 
 Файл содержит `frontUrl`, `authUrl`, `apiUrl`, `browser`, `headless`, `commit`, `rangiffler-auth.version` и `rangiffler-api.version`. Версии читаются через `Migrations.currentVersion()` из текущего состояния Flyway после прогона; при недоступной схеме записывается `unavailable`, при отсутствии текущей версии — `0`. Само расширение Git не запускает.
 
